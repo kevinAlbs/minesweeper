@@ -1,79 +1,80 @@
 <html>
 <script>
-const kCellStateUnopened = 0;
-const kCellStateOpened = 1;
-const kCellStateFlagged = 2;
+    const kCellStateUnopened = 0;
+    const kCellStateOpened = 1;
+    const kCellStateFlagged = 2;
 
-function grid_make (n_rows, n_cols) {
-    const grid = [];
-    for (let i = 0; i < n_rows; i++) {
-        const row = [];
-        for (let j = 0; j < n_cols; j++) {
-            const cell = {
-                state : kCellStateUnopened,
-                is_mine : false
-            };
-            row.push(cell);
+    function grid_make(n_rows, n_cols) {
+        const grid = [];
+        for (let i = 0; i < n_rows; i++) {
+            const row = [];
+            for (let j = 0; j < n_cols; j++) {
+                const cell = {
+                    state: kCellStateUnopened,
+                    is_mine: false
+                };
+                row.push(cell);
+            }
+            grid.push(row)
         }
-        grid.push(row)
-    }
-    // Loop again, and make links to neighbors.
-    for (let i = 0; i < n_rows; i++) {
-        for (let j = 0; j < n_cols; j++) {
-            const cell = grid[i][j];
-            grid[i][j].nw = i > 0 && j > 0 ? grid[i-1][j-1] : null;
-            grid[i][j].n = i > 0 ? grid[i-1][j] : null;
-            grid[i][j].ne = i > 0 && j < n_cols-1 ? grid[i-1][j+1] : null;
+        // Loop again, and make links to neighbors.
+        for (let i = 0; i < n_rows; i++) {
+            for (let j = 0; j < n_cols; j++) {
+                const cell = grid[i][j];
+                grid[i][j].nw = i > 0 && j > 0 ? grid[i - 1][j - 1] : null;
+                grid[i][j].n = i > 0 ? grid[i - 1][j] : null;
+                grid[i][j].ne = i > 0 && j < n_cols - 1 ? grid[i - 1][j + 1] : null;
 
-            grid[i][j].w = j > 0 ? grid[i][j-1] : null;
-            grid[i][j].e = j < n_cols-1 ? grid[i][j+1] : null;
+                grid[i][j].w = j > 0 ? grid[i][j - 1] : null;
+                grid[i][j].e = j < n_cols - 1 ? grid[i][j + 1] : null;
 
-            grid[i][j].sw = i < n_rows-1 && j > 0 ? grid[i+1][j-1] : null;
-            grid[i][j].s = i < n_rows-1 ? grid[i+1][j] : null;
-            grid[i][j].se = i < n_rows-1 && j < n_cols-1 ? grid[i+1][j+1] : null;
+                grid[i][j].sw = i < n_rows - 1 && j > 0 ? grid[i + 1][j - 1] : null;
+                grid[i][j].s = i < n_rows - 1 ? grid[i + 1][j] : null;
+                grid[i][j].se = i < n_rows - 1 && j < n_cols - 1 ? grid[i + 1][j + 1] : null;
+            }
         }
+        return grid;
+    };
+
+    // reveal returns false if cell at i,j is a is_mine.
+    function reveal(grid, i, j) {
+        assert(i >= 0 && i < grid.length);
+        assert(j >= 0 && j < grid[i].length);
+        const cell = grid[i][j];
+        if (cell.state == kCellStateOpened) {
+            // Already revealed. Do nothing.
+            return true;
+        }
+        if (cell.state == kCellStateFlagged) {
+            // Flagged cells cannot be revealed without unflagging. Do nothing.
+            return true;
+        }
+
+        cell.state = kCellStateOpened;
+        if (cell.is_mine) {
+            return false;
+        }
+
+        // If no neighbors are mines, reveal all neighbors.
     }
-    return grid;
-};
 
-// reveal returns false if cell at i,j is a is_mine.
-function reveal (grid, i, j) {
-    assert (i >= 0 && i < grid.length);
-    assert (j >= 0 && j < grid[i].length);
-    const cell = grid[i][j];
-    if (cell.state == kCellStateOpened) {
-        // Already revealed. Do nothing.
-        return true;
-    }
-    if (cell.state == kCellStateFlagged) {
-        // Flagged cells cannot be revealed without unflagging. Do nothing.
-        return true;
+    function test_grid_make() {
+        const grid = grid_make(3, 3);
+        console.assert(grid[1][1].nw == grid[0][0]);
+        console.assert(grid[1][1].n == grid[0][2]);
+        console.assert(grid[1][1].ne == grid[0][2]);
+        console.assert(grid[1][1].w == grid[1][0]);
+        console.assert(grid[1][1].e == grid[1][2]);
+        console.assert(grid[1][1].sw == grid[2][0]);
+        console.assert(grid[1][1].s == grid[2][1]);
+        console.assert(grid[1][1].se == grid[2][2]);
     }
 
-    cell.state = kCellStateOpened;
-    if (cell.is_mine) {
-        return false;
+    function run_tests() {
+        test_grid_make();
     }
 
-    // If no neighbors are mines, reveal all neighbors.
-}
-
-function test_grid_make () {
-    const grid = grid_make (3,3);
-    console.assert (grid[1][1].nw == grid[0][0]);
-    console.assert (grid[1][1].n == grid[0][2]);
-    console.assert (grid[1][1].ne == grid[0][2]);
-    console.assert (grid[1][1].w == grid[1][0]);
-    console.assert (grid[1][1].e == grid[1][2]);
-    console.assert (grid[1][1].sw == grid[2][0]);
-    console.assert (grid[1][1].s == grid[2][1]);
-    console.assert (grid[1][1].se == grid[2][2]);
-}
-
-function run_tests () {
-    test_grid_make ();
-}
-
-run_tests ();
+    run_tests();
 </script>
+
 </html>
