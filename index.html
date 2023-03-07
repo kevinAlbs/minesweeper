@@ -4,6 +4,7 @@
     const kCellStateOpened = 1;
     const kCellStateFlagged = 2;
 
+    // grid_make makes a grid with no mines.
     function grid_make(n_rows, n_cols) {
         const grid = [];
         for (let i = 0; i < n_rows; i++) {
@@ -38,8 +39,8 @@
 
     // reveal returns false if cell at i,j is a is_mine.
     function reveal(grid, i, j) {
-        assert(i >= 0 && i < grid.length);
-        assert(j >= 0 && j < grid[i].length);
+        console.assert(i >= 0 && i < grid.length);
+        console.assert(j >= 0 && j < grid[i].length);
         const cell = grid[i][j];
         if (cell.state == kCellStateOpened) {
             // Already revealed. Do nothing.
@@ -58,10 +59,12 @@
         // If no neighbors are mines, reveal all neighbors.
     }
 
+    // Testing ... begin
+
     function test_grid_make() {
         const grid = grid_make(3, 3);
         console.assert(grid[1][1].nw == grid[0][0]);
-        console.assert(grid[1][1].n == grid[0][2]);
+        console.assert(grid[1][1].n == grid[0][1]);
         console.assert(grid[1][1].ne == grid[0][2]);
         console.assert(grid[1][1].w == grid[1][0]);
         console.assert(grid[1][1].e == grid[1][2]);
@@ -70,11 +73,79 @@
         console.assert(grid[1][1].se == grid[2][2]);
     }
 
+    // ch2state maps a character to a cell state.
+    const ch2state = {
+        "u": kCellStateUnopened,
+        "o": kCellStateOpened,
+        "f": kCellStateFlagged
+    };
+
+    // state2ch maps a cell state to a character.
+    let state2ch = {};
+    for (k in ch2state) {
+        let v = ch2state[k];
+        state2ch[v] = k;
+    }
+
+    function grid2str(grid) {
+        let ret = "";
+        for (let i = 0; i < grid.length; i++) {
+            for (let j = 0; j < grid[i].length; j++) {
+                ret += state2ch[grid[i][j].state];
+            }
+            ret += "\n";
+        }
+        return ret;
+    }
+
+    function assert_states(grid, expected_states) {
+        console.assert(grid.length == expected_states.length, "Expected expected_states.length == %d. Bad test input?", grid.length);
+        for (let i = 0; i < grid.length; i++) {
+            console.assert(grid[i].length == expected_states[i].length, "Expected expected_states[%d].length == %d. Bad test input?", i, grid[i].length);
+            for (let j = 0; j < grid[i].length; j++) {
+                let expected_state_ch = expected_states[i][j];
+                console.assert(expected_state_ch in ch2state, "Expected state %s to be in %o", expected_state_ch, Object.keys(ch2state));
+                let expected_state = ch2state[expected_state_ch];
+                console.assert(grid[i][j].state == expected_state, "Expected (%d, %d) to be state %s, got %s\nGrid:\n%s", i, j, expected_state_ch, state2ch[grid[i][j].state], grid2str(grid));
+            }
+        }
+    }
+
+    function test_reveal() {
+        // Reveal returns false on a mine, true on non-mine.
+        {
+            const grid = grid_make(3, 3);
+            grid[0][0].is_mine = true;
+            console.assert(!reveal(grid, 0, 0));
+            console.assert(reveal(grid, 1, 0));
+        }
+        // Reveal recursively reveals.
+        {
+            const grid = grid_make(3, 2);
+            grid[0][0].is_mine = true;
+            assert_states(grid, [
+                "uu",
+                "uu",
+                "uu"
+            ]);
+            console.assert(reveal(grid, 2, 1));
+            assert_states(grid, [
+                "uu",
+                "oo",
+                "oo"
+            ]);
+        }
+    }
+
+
     function run_tests() {
         test_grid_make();
+        test_reveal();
     }
 
     run_tests();
+
+    // Testing ... end
 </script>
 
 </html>
