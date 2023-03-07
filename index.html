@@ -36,12 +36,6 @@ function grid_make (n_rows, n_cols) {
     return grid;
 };
 
-function assert (stmt) {
-    if (!stmt) {
-        throw "assertion failed"
-    }
-}
-
 // reveal returns false if cell at i,j is a is_mine.
 function reveal (grid, i, j) {
     assert (i >= 0 && i < grid.length);
@@ -66,18 +60,14 @@ function reveal (grid, i, j) {
 
 function test_grid_make () {
     const grid = grid_make (3,3);
-    assert (grid[1][1].nw == grid[0][0]);
-    assert (grid[1][1].n == grid[0][2]);
-    assert (grid[1][1].ne == grid[0][2]);
-    assert (grid[1][1].w == grid[1][0]);
-    assert (grid[1][1].e == grid[1][2]);
-    assert (grid[1][1].sw == grid[2][0]);
-    assert (grid[1][1].s == grid[2][1]);
-    assert (grid[1][1].se == grid[2][2]);
-}
-
-function test_reveal () {
-    // TODO.
+    console.assert (grid[1][1].nw == grid[0][0]);
+    console.assert (grid[1][1].n == grid[0][2]);
+    console.assert (grid[1][1].ne == grid[0][2]);
+    console.assert (grid[1][1].w == grid[1][0]);
+    console.assert (grid[1][1].e == grid[1][2]);
+    console.assert (grid[1][1].sw == grid[2][0]);
+    console.assert (grid[1][1].s == grid[2][1]);
+    console.assert (grid[1][1].se == grid[2][2]);
 }
 
 function run_tests () {
