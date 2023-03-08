@@ -37,6 +37,19 @@
         return grid;
     };
 
+    function cell_mine_count(cell) {
+        console.assert(!cell.is_mine);
+        let count = 0;
+        if (cell.ne && cell.ne.is_mine) count++;
+        if (cell.n && cell.n.is_mine) count++;
+        if (cell.nw && cell.nw.is_mine) count++;
+        if (cell.w && cell.w.is_mine) count++;
+        if (cell.e && cell.e.is_mine) count++;
+        if (cell.se && cell.se.is_mine) count++;
+        if (cell.s && cell.s.is_mine) count++;
+        if (cell.sw && cell.sw.is_mine) count++;
+        return count;
+    }
 
     // cell_reveal returns false if cell is a is_mine.
     function cell_reveal(cell) {
@@ -55,6 +68,19 @@
         }
 
         // If no neighbors are mines, reveal all neighbors.
+        if (cell_mine_count(cell) != 0) {
+            return true;
+        }
+
+        if (cell.ne && cell.ne.state == kCellStateUnopened) cell_reveal(cell.ne);
+        if (cell.n && cell.n.state == kCellStateUnopened) cell_reveal(cell.n);
+        if (cell.nw && cell.nw.state == kCellStateUnopened) cell_reveal(cell.nw);
+        if (cell.w && cell.w.state == kCellStateUnopened) cell_reveal(cell.w);
+        if (cell.e && cell.e.state == kCellStateUnopened) cell_reveal(cell.e);
+        if (cell.se && cell.se.state == kCellStateUnopened) cell_reveal(cell.se);
+        if (cell.s && cell.s.state == kCellStateUnopened) cell_reveal(cell.s);
+        if (cell.sw && cell.sw.state == kCellStateUnopened) cell_reveal(cell.sw);
+        return true;
     }
 
     // Testing ... begin
