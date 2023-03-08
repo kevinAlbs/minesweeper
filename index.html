@@ -37,11 +37,9 @@
         return grid;
     };
 
-    // reveal returns false if cell at i,j is a is_mine.
-    function reveal(grid, i, j) {
-        console.assert(i >= 0 && i < grid.length);
-        console.assert(j >= 0 && j < grid[i].length);
-        const cell = grid[i][j];
+
+    // cell_reveal returns false if cell is a is_mine.
+    function cell_reveal(cell) {
         if (cell.state == kCellStateOpened) {
             // Already revealed. Do nothing.
             return true;
@@ -116,8 +114,8 @@
         {
             const grid = grid_make(3, 3);
             grid[0][0].is_mine = true;
-            console.assert(!reveal(grid, 0, 0));
-            console.assert(reveal(grid, 1, 0));
+            console.assert(!cell_reveal(grid[0][0]));
+            console.assert(cell_reveal(grid[1][0]));
         }
         // Reveal recursively reveals.
         {
@@ -128,7 +126,7 @@
                 "uu",
                 "uu"
             ]);
-            console.assert(reveal(grid, 2, 1));
+            console.assert(cell_reveal(grid[2][1]));
             assert_states(grid, [
                 "uu",
                 "oo",
