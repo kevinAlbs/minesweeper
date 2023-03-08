@@ -234,9 +234,9 @@
             ]);
         }
 
-        // Chord reveals neighbors if number of flagged neighbors is greater than number of mines.
+        // Chord does not reveal neighbors if number of flagged neighbors is greater than number of mines.
         // Q: Is this consistent with other minesweeper games?
-        // A:
+        // A: Yes. Checked with minesweeper-x.
         {
             const grid = grid_make(3, 2);
             grid[0][0].is_mine = true;
@@ -251,14 +251,14 @@
             console.assert(cell_chord(grid[0][1]));
             assert_states(grid, [
                 "fo",
-                "fo",
+                "fu",
                 "uu"
             ]);
         }
 
         // Chord does not recursively chord.
         // Q: Is this consistent with other minesweeper games?
-        // A:
+        // A: Yes. Checked with minesweeper-x.
         {
             const grid = grid_make(3, 2);
             grid[0][0].is_mine = true;
