@@ -83,6 +83,31 @@
         return true;
     }
 
+    // cell_chord attempts to reveal cells if the number of flagged neighbors equals the number of neighboring mines.
+    // returns false if a revealed cell is a is_mine.
+    // does nothing if the number of flagged neighbors is not equal to the number of neighboring mines.
+    function cell_chord(cell) {
+        if (cell.state != kCellStateOpened) {
+            // Not open. Do nothing.
+            return true;
+        }
+
+        // if (cell_mine_count(cell) != cell_flag_count(cell)) {
+        //     return true;
+        // }
+
+        // if (cell.ne && cell.ne.state == kCellStateUnopened) { if (!cell_reveal(cell.ne)) return false; }
+        // if (cell.n && cell.n.state == kCellStateUnopened) { if (!cell_reveal(cell.n)) return false; }
+        // if (cell.nw && cell.nw.state == kCellStateUnopened) { if (!cell_reveal(cell.nw)) return false; }
+        // if (cell.w && cell.w.state == kCellStateUnopened) { if (!cell_reveal(cell.w)) return false; }
+        // if (cell.e && cell.e.state == kCellStateUnopened) { if (!cell_reveal(cell.e)) return false; }
+        // if (cell.se && cell.se.state == kCellStateUnopened) { if (!cell_reveal(cell.se)) return false; }
+        // if (cell.s && cell.s.state == kCellStateUnopened) { if (!cell_reveal(cell.s)) return false; }
+        // if (cell.sw && cell.sw.state == kCellStateUnopened) { if (!cell_reveal(cell.sw)) return false; }
+        return true;
+    }
+
+
     // Testing ... begin
 
     function test_grid_make() {
@@ -161,10 +186,105 @@
         }
     }
 
+    function test_chord() {
+        // Chord reveals if number of flagged neighbors is equal to number of mines.
+        {
+            const grid = grid_make(3, 2);
+            grid[0][0].is_mine = true;
+            console.assert(cell_reveal(grid[0][1]));
+            assert_states(grid, [
+                "uo",
+                "uu",
+                "uu"
+            ]);
+            // Attempting to chord does nothing.
+            console.assert(cell_chord(grid[0][1]));
+            assert_states(grid, [
+                "uo",
+                "uu",
+                "uu"
+            ]);
+            // After flagging the mine, chording reveals.
+            grid[0][0].state = kCellStateFlagged;
+            console.assert(cell_chord(grid[0][1]));
+            assert_states(grid, [
+                "fo",
+                "oo",
+                "oo"
+            ]);
+        }
+
+        // Chord returns false if a mine is revealed.
+        {
+            const grid = grid_make(3, 2);
+            grid[0][0].is_mine = true;
+            console.assert(cell_reveal(grid[0][1]));
+            assert_states(grid, [
+                "uo",
+                "uu",
+                "uu"
+            ]);
+            // After flagging the incorrect mine, chording reveals and returns false.
+            grid[1][0].state = kCellStateFlagged;
+            console.assert(!cell_chord(grid[0][1]));
+            assert_states(grid, [
+                "oo",
+                "fu",
+                "uu"
+            ]);
+        }
+
+        // Chord reveals neighbors if number of flagged neighbors is greater than number of mines.
+        // Q: Is this consistent with other minesweeper games?
+        // A:
+        {
+            const grid = grid_make(3, 2);
+            grid[0][0].is_mine = true;
+            console.assert(cell_reveal(grid[0][1]));
+            assert_states(grid, [
+                "uo",
+                "uu",
+                "uu"
+            ]);
+            grid[0][0].state = kCellStateFlagged;
+            grid[1][0].state = kCellStateFlagged;
+            console.assert(cell_chord(grid[0][1]));
+            assert_states(grid, [
+                "fo",
+                "fo",
+                "uu"
+            ]);
+        }
+
+        // Chord does not recursively chord.
+        // Q: Is this consistent with other minesweeper games?
+        // A:
+        {
+            const grid = grid_make(3, 2);
+            grid[0][0].is_mine = true;
+            grid[1][0].is_mine = true;
+            console.assert(cell_reveal(grid[0][1]));
+            assert_states(grid, [
+                "uo",
+                "uu",
+                "uu"
+            ]);
+            grid[0][0].state = kCellStateFlagged;
+            grid[1][0].state = kCellStateFlagged;
+            console.assert(cell_chord(grid[0][1]));
+            assert_states(grid, [
+                "fo",
+                "fo",
+                "uu"
+            ]);
+        }
+    }
+
 
     function run_tests() {
         test_grid_make();
         test_reveal();
+        test_chord();
     }
 
     run_tests();
