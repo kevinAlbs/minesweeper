@@ -51,6 +51,19 @@
         return count;
     }
 
+    function cell_flag_count(cell) {
+        let count = 0;
+        if (cell.ne && cell.ne.state == kCellStateFlagged) count++;
+        if (cell.n && cell.n.state == kCellStateFlagged) count++;
+        if (cell.nw && cell.nw.state == kCellStateFlagged) count++;
+        if (cell.w && cell.w.state == kCellStateFlagged) count++;
+        if (cell.e && cell.e.state == kCellStateFlagged) count++;
+        if (cell.se && cell.se.state == kCellStateFlagged) count++;
+        if (cell.s && cell.s.state == kCellStateFlagged) count++;
+        if (cell.sw && cell.sw.state == kCellStateFlagged) count++;
+        return count;
+    }
+
     // cell_reveal returns false if cell is a is_mine.
     function cell_reveal(cell) {
         if (cell.state == kCellStateOpened) {
@@ -92,18 +105,18 @@
             return true;
         }
 
-        // if (cell_mine_count(cell) != cell_flag_count(cell)) {
-        //     return true;
-        // }
+        if (cell_mine_count(cell) != cell_flag_count(cell)) {
+            return true;
+        }
 
-        // if (cell.ne && cell.ne.state == kCellStateUnopened) { if (!cell_reveal(cell.ne)) return false; }
-        // if (cell.n && cell.n.state == kCellStateUnopened) { if (!cell_reveal(cell.n)) return false; }
-        // if (cell.nw && cell.nw.state == kCellStateUnopened) { if (!cell_reveal(cell.nw)) return false; }
-        // if (cell.w && cell.w.state == kCellStateUnopened) { if (!cell_reveal(cell.w)) return false; }
-        // if (cell.e && cell.e.state == kCellStateUnopened) { if (!cell_reveal(cell.e)) return false; }
-        // if (cell.se && cell.se.state == kCellStateUnopened) { if (!cell_reveal(cell.se)) return false; }
-        // if (cell.s && cell.s.state == kCellStateUnopened) { if (!cell_reveal(cell.s)) return false; }
-        // if (cell.sw && cell.sw.state == kCellStateUnopened) { if (!cell_reveal(cell.sw)) return false; }
+        if (cell.ne && cell.ne.state == kCellStateUnopened) { if (!cell_reveal(cell.ne)) return false; }
+        if (cell.n && cell.n.state == kCellStateUnopened) { if (!cell_reveal(cell.n)) return false; }
+        if (cell.nw && cell.nw.state == kCellStateUnopened) { if (!cell_reveal(cell.nw)) return false; }
+        if (cell.w && cell.w.state == kCellStateUnopened) { if (!cell_reveal(cell.w)) return false; }
+        if (cell.e && cell.e.state == kCellStateUnopened) { if (!cell_reveal(cell.e)) return false; }
+        if (cell.se && cell.se.state == kCellStateUnopened) { if (!cell_reveal(cell.se)) return false; }
+        if (cell.s && cell.s.state == kCellStateUnopened) { if (!cell_reveal(cell.s)) return false; }
+        if (cell.sw && cell.sw.state == kCellStateUnopened) { if (!cell_reveal(cell.sw)) return false; }
         return true;
     }
 
@@ -155,7 +168,7 @@
                 let expected_state_ch = expected_states[i][j];
                 console.assert(expected_state_ch in ch2state, "Expected state %s to be in %o", expected_state_ch, Object.keys(ch2state));
                 let expected_state = ch2state[expected_state_ch];
-                console.assert(grid[i][j].state == expected_state, "Expected (%d, %d) to be state %s, got %s\nGrid:\n%s", i, j, expected_state_ch, state2ch[grid[i][j].state], grid2str(grid));
+                console.assert(grid[i][j].state == expected_state, "Expected (%d, %d) to be state %s, got %s\nExpected Grid\n%s\nGot Grid:\n%s\n", i, j, expected_state_ch, state2ch[grid[i][j].state], expected_states.join("\n"), grid2str(grid));
             }
         }
     }
@@ -187,7 +200,7 @@
     }
 
     function test_chord() {
-        // Chord reveals if number of flagged neighbors is equal to number of mines.
+        // Chord does nothing if no flagged neighbors.
         {
             const grid = grid_make(3, 2);
             grid[0][0].is_mine = true;
@@ -204,9 +217,27 @@
                 "uu",
                 "uu"
             ]);
-            // After flagging the mine, chording reveals.
+        }
+        // Chord reveals if number of flagged neighbors is equal to number of mines.
+        {
+            const grid = grid_make(3, 2);
+            grid[0][0].is_mine = true;
+            console.assert(cell_reveal(grid[0][1]));
             grid[0][0].state = kCellStateFlagged;
+            assert_states(grid, [
+                "fo",
+                "uu",
+                "uu"
+            ]);
+            // After flagging the mine, chording reveals.
             console.assert(cell_chord(grid[0][1]));
+            assert_states(grid, [
+                "fo",
+                "oo",
+                "uu"
+            ]);
+            // Chord works again.
+            console.assert(cell_chord(grid[1][1]));
             assert_states(grid, [
                 "fo",
                 "oo",
@@ -219,13 +250,13 @@
             const grid = grid_make(3, 2);
             grid[0][0].is_mine = true;
             console.assert(cell_reveal(grid[0][1]));
+            grid[1][0].state = kCellStateFlagged;
             assert_states(grid, [
                 "uo",
-                "uu",
+                "fu",
                 "uu"
             ]);
             // After flagging the incorrect mine, chording reveals and returns false.
-            grid[1][0].state = kCellStateFlagged;
             console.assert(!cell_chord(grid[0][1]));
             assert_states(grid, [
                 "oo",
@@ -241,13 +272,13 @@
             const grid = grid_make(3, 2);
             grid[0][0].is_mine = true;
             console.assert(cell_reveal(grid[0][1]));
-            assert_states(grid, [
-                "uo",
-                "uu",
-                "uu"
-            ]);
             grid[0][0].state = kCellStateFlagged;
             grid[1][0].state = kCellStateFlagged;
+            assert_states(grid, [
+                "fo",
+                "fu",
+                "uu"
+            ]);
             console.assert(cell_chord(grid[0][1]));
             assert_states(grid, [
                 "fo",
@@ -264,13 +295,13 @@
             grid[0][0].is_mine = true;
             grid[1][0].is_mine = true;
             console.assert(cell_reveal(grid[0][1]));
-            assert_states(grid, [
-                "uo",
-                "uu",
-                "uu"
-            ]);
             grid[0][0].state = kCellStateFlagged;
             grid[1][0].state = kCellStateFlagged;
+            assert_states(grid, [
+                "fo",
+                "fu",
+                "uu"
+            ]);
             console.assert(cell_chord(grid[0][1]));
             assert_states(grid, [
                 "fo",
