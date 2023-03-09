@@ -37,6 +37,30 @@
         return grid;
     };
 
+    const kGridStateInProgress = 0;
+    const kGridStateWon = 1;
+    const kGridStateLost = 2;
+    function grid_state(grid) {
+        let num_mines = 0;
+        let num_open = 0;
+        for (let i = 0; i < grid.length; i++) {
+            for (let j = 0; j < grid[i].length; j++) {
+                let cell = grid[i][j];
+                if (cell.state == kCellStateOpened && cell.is_mine) {
+                    return kGridStateLost;
+                }
+                if (cell.state == kCellStateOpened) {
+                    num_open++;
+                }
+                if (cell.is_mine) {
+                    num_mines++;
+                }
+            }
+        }
+        let num_cells = grid.length * grid[0].length;
+        return num_cells - num_open == num_mines;
+    }
+
     function cell_mine_count(cell) {
         console.assert(!cell.is_mine);
         let count = 0;
@@ -311,11 +335,33 @@
         }
     }
 
+    function test_grid_state() {
+        // Grid is won once all non-mine cells are revealed.
+        {
+            const grid = grid_make(2, 2);
+            grid[0][0].is_mine = true;
+            console.assert(grid_state(grid) == kGridStateInProgress);
+            console.assert(cell_reveal(grid[0][1]));
+            console.assert(cell_reveal(grid[1][0]));
+            console.assert(cell_reveal(grid[1][1]));
+            console.assert(grid_state(grid) == kGridStateWon);
+        }
+        // Grid is lost once a mine cells is revealed.
+        {
+            const grid = grid_make(2, 2);
+            grid[0][0].is_mine = true;
+            console.assert(grid_state(grid) == kGridStateInProgress);
+            console.assert(!cell_reveal(grid[0][0]));
+            console.assert(grid_state(grid) == kGridStateLost);
+        }
+    }
+
 
     function run_tests() {
         test_grid_make();
         test_reveal();
         test_chord();
+        test_grid_state();
     }
 
     run_tests();
