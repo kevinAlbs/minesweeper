@@ -37,6 +37,36 @@
         return grid;
     };
 
+    function shuffle(arr) {
+        for (let i = 0; i < arr.length; i++) {
+            let dst = Math.floor(Math.random() * arr.length);
+            let tmp = arr[dst];
+            arr[dst] = arr[i];
+            arr[i] = tmp;
+        }
+    }
+
+    // grid_set_mines adds num_mines randomly. start_i and start_j are excluded from consideration.
+    function grid_set_mines(grid, start_i, start_j, num_mines) {
+        const num_rows = grid.length;
+        const num_cols = grid[0].length;
+
+        console.assert(num_mines <= num_rows * num_cols - 1);
+        let positions = [];
+        for (let i = 0; i < num_rows; i++) {
+            for (let j = 0; j < num_cols; j++) {
+                if (i == start_i && j == start_j) {
+                    continue;
+                }
+                positions.push({ i: i, j: j });
+            }
+        }
+        shuffle(positions);
+        for (let m = 0; m < num_mines; m++) {
+            grid[positions[m].i][positions[m].j].is_mine = true;
+        }
+    }
+
     const kGridStateInProgress = 0;
     const kGridStateWon = 1;
     const kGridStateLost = 2;
@@ -356,12 +386,25 @@
         }
     }
 
+    function test_grid_set_mines() {
+        // Mines are not set on starting position.
+        {
+            const grid = grid_make(2, 2);
+            grid_set_mines(grid, 0, 0, 3);
+            console.assert(!grid[0][0].is_mine);
+            console.assert(grid[1][0].is_mine);
+            console.assert(grid[0][1].is_mine);
+            console.assert(grid[1][1].is_mine);
+        }
+    }
+
 
     function run_tests() {
         test_grid_make();
         test_reveal();
         test_chord();
         test_grid_state();
+        test_grid_set_mines();
     }
 
     run_tests();
