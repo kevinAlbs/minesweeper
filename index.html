@@ -1,5 +1,71 @@
 <html>
+
+<head>
+    <style type="text/css">
+        canvas {
+            border: 1px black solid;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas width="506" height="370"></canvas>
+</body>
 <script>
+    // Minesweeper expert mode is 16x30.
+
+    // Begin UI.
+    const cnv = document.querySelector("canvas");
+    const ctx = cnv.getContext("2d");
+    const image = new Image();
+    const sprites = {};
+
+    // Wait for the sprite sheet to load
+    image.onload = () => {
+        const ps = [];
+        // Cut two rows of 16x16 squares.
+        for (let i = 0; i < 2; i++) {
+            for (let j = 0; j < 8; j++) {
+                ps.push(createImageBitmap(image, 17 * j, 49 + 17 * i, 16, 16));
+            }
+        }
+        // Cut row of smileys.
+        for (let i = 0; i < 5; i++) {
+            ps.push(createImageBitmap(image, 25 * i, 24, 24, 24));
+        }
+        // Cut row of digits.
+        for (let i = 0; i < 12; i++) {
+            ps.push(createImageBitmap(image, 14 * i, 0, 13, 23));
+        }
+        Promise.all(ps).then((sprites) => {
+            // Draw each sprite onto the canvas
+            sprites["cell"] = sprites[0];
+            sprites["cell_pressed"] = sprites[1];
+            sprites["flag"] = sprites[2];
+
+            for (i = 0; i < 16; i++) {
+                ctx.drawImage(sprites[i], 20 * i, 16);
+            }
+
+            for (i = 16; i < 16 + 5; i++) {
+                ctx.drawImage(sprites[i], 25 * (i - 16), 40);
+            }
+
+            for (i = 16 + 5; i < 16 + 5 + 12; i++) {
+                ctx.drawImage(sprites[i], 15 * (i - 16 - 5), 80);
+            }
+        });
+    };
+
+    image.onerror = () => {
+        console.error("Failed to load spritesheet image");
+    }
+
+    // Load the sprite sheet from an image file
+    image.src = "spritesheet.png";
+
+
+    // Begin game logic. Does not interact with UI.
     const kCellStateUnopened = 0;
     const kCellStateOpened = 1;
     const kCellStateFlagged = 2;
