@@ -13,59 +13,148 @@
 </body>
 <script>
     // Minesweeper expert mode is 16x30.
+    // Begin game logic. Uses grid. Uses sprite_map.
+    const game_make = function () {
+        const obj = {};
+        const cnv = document.querySelector("canvas");
+        const ctx = cnv.getContext("2d");
+        const grid_top = 10;
+        const grid_left = 0;
+        let grid = grid_make(16, 30);
 
-    // Begin UI.
-    const cnv = document.querySelector("canvas");
-    const ctx = cnv.getContext("2d");
-    const image = new Image();
-    const sprites = {};
+        const mouse = {
+            in_canvas: false,
+            buttons: 0,
+            offsetX: 0,
+            offsetY: 0
+        };
+        let mouseReleased = false; // Set to false after processed in a tick.
 
-    // Wait for the sprite sheet to load
-    image.onload = () => {
-        const ps = [];
-        // Cut two rows of 16x16 squares.
-        for (let i = 0; i < 2; i++) {
-            for (let j = 0; j < 8; j++) {
-                ps.push(createImageBitmap(image, 17 * j, 49 + 17 * i, 16, 16));
-            }
-        }
-        // Cut row of smileys.
-        for (let i = 0; i < 5; i++) {
-            ps.push(createImageBitmap(image, 25 * i, 24, 24, 24));
-        }
-        // Cut row of digits.
-        for (let i = 0; i < 12; i++) {
-            ps.push(createImageBitmap(image, 14 * i, 0, 13, 23));
-        }
-        Promise.all(ps).then((sprites) => {
-            // Draw each sprite onto the canvas
-            sprites["cell"] = sprites[0];
-            sprites["cell_pressed"] = sprites[1];
-            sprites["flag"] = sprites[2];
-
-            for (i = 0; i < 16; i++) {
-                ctx.drawImage(sprites[i], 20 * i, 16);
-            }
-
-            for (i = 16; i < 16 + 5; i++) {
-                ctx.drawImage(sprites[i], 25 * (i - 16), 40);
-            }
-
-            for (i = 16 + 5; i < 16 + 5 + 12; i++) {
-                ctx.drawImage(sprites[i], 15 * (i - 16 - 5), 80);
+        document.addEventListener("mousemove", function (e) {
+            if (e.target == cnv) {
+                mouse.in_canvas = true;
+                mouse.offsetX = e.offsetX;
+                mouse.offsetY = e.offsetY;
+                mouse.buttons = e.buttons;
+            } else {
+                mouse.in_canvas = false;
+                mouse.offsetX = 0;
+                mouse.offsetY = 0;
+                mouse.buttons = 0;
             }
         });
-    };
 
-    image.onerror = () => {
-        console.error("Failed to load spritesheet image");
+        cnv.addEventListener("mouseup", function (e) {
+            mouseReleased = true;
+        });
+
+        obj.start = function () {
+            window.requestAnimationFrame(loop);
+        }
+
+        // get_cell_coords returns the coordinates of a cell from a mouse position
+        function get_cell_coords(mouse_x, mouse_y) {
+            mouse_y -= grid_top;
+            mouse_x -= grid_left;
+            const i = Math.floor(mouse_y / 16);
+            const j = Math.floor(mouse_x / 16);
+            if (i < 0 || i >= grid.length) {
+                return null;
+            }
+            if (j < 0 || j >= grid[0].length) {
+                return null;
+            }
+            return { i: i, j: j };
+        }
+
+        function loop() {
+            // Render grid.
+            for (let i = 0; i < grid.length; i++) {
+                for (let j = 0; j < grid[i].length; j++) {
+                    ctx.drawImage(sprite_map["cell"], grid_left + 16 * j, grid_top + 16 * i);
+                }
+            }
+
+            if (mouse.buttons & 1) {
+                console.log("Primary mouse button is pressed")
+                // Primary mouse button pressed.
+                const coords = get_cell_coords(mouse.offsetX, mouse.offsetY);
+                if (coords) {
+                    ctx.drawImage(sprite_map["cell_pressed"], grid_left + 16 * coords.j, grid_top + 16 * coords.i);
+                }
+            }
+            window.requestAnimationFrame(loop);
+        }
+
+        function test_get_cell() {
+            grid = grid_make(2, 2);
+            function eq(a, b) {
+                if ((a === null) && (b === null)) return true;
+                if ((a === null) != (b === null)) return false;
+                return a.i == b.i && a.j == b.j;
+            }
+            console.assert(eq(get_cell_coords(grid_left + 0, grid_top + 0), { i: 0, j: 0 }));
+            console.assert(eq(get_cell_coords(grid_left + 0, grid_top + 15), { i: 0, j: 0 }));
+            console.assert(eq(get_cell_coords(grid_left + 0, grid_top + 16), { i: 1, j: 0 }));
+            console.assert(eq(get_cell_coords(grid_left + 15, grid_top + 0), { i: 0, j: 0 }));
+            console.assert(eq(get_cell_coords(grid_left + 16, grid_top + 0), { i: 0, j: 1 }));
+            console.assert(eq(get_cell_coords(grid_left + 16, grid_top + 0), { i: 0, j: 1 }));
+            console.assert(eq(get_cell_coords(grid_left + 32, grid_top + 0), null));
+        }
+        obj.selftest = function () {
+            test_get_cell();
+        }
+
+        return obj;
     }
 
-    // Load the sprite sheet from an image file
-    image.src = "spritesheet.png";
+    let game = null;
 
+    // Begin loading sprite map.
+    const sprite_map = {};
+    (function () {
+        const image = new Image();
+        // Wait for the sprite sheet to load
+        image.onload = () => {
+            const ps = [];
+            // Cut two rows of 16x16 squares.
+            for (let i = 0; i < 2; i++) {
+                for (let j = 0; j < 8; j++) {
+                    ps.push(createImageBitmap(image, 17 * j, 49 + 17 * i, 16, 16));
+                }
+            }
+            // Cut row of smileys.
+            for (let i = 0; i < 5; i++) {
+                ps.push(createImageBitmap(image, 25 * i, 24, 24, 24));
+            }
+            // Cut row of digits.
+            for (let i = 0; i < 12; i++) {
+                ps.push(createImageBitmap(image, 14 * i, 0, 13, 23));
+            }
+            Promise.all(ps).then((sprites) => {
+                const sprite_names = [
+                    "cell", "cell_pressed", "flag", "question", "question_pressed", "mine", "mine_red", "mine_x", "1", "2", "3", "4", "5", "6", "7", "8", "smiley", "smiley_pressed", "smiley_o", "smiley_glasses", "smiley_dead", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d9", "d0", "ddash", "dempty"
+                ];
+                // Draw each sprite onto the canvas
+                console.assert(sprite_names.length == sprites.length);
+                for (let i = 0; i < sprite_names.length; i++) {
+                    sprite_map[sprite_names[i]] = sprites[i];
+                }
+                game = game_make();
+                game.start();
+            });
 
-    // Begin game logic. Does not interact with UI.
+        };
+
+        image.onerror = () => {
+            console.error("Failed to load spritesheet image");
+        }
+
+        // Load the sprite sheet from an image file
+        image.src = "spritesheet.png";
+    }());
+
+    // Begin grid logic. Does not interact with UI.
     const kCellStateUnopened = 0;
     const kCellStateOpened = 1;
     const kCellStateFlagged = 2;
@@ -471,6 +560,8 @@
         test_chord();
         test_grid_state();
         test_grid_set_mines();
+        let g = game_make();
+        g.selftest();
     }
 
     run_tests();
