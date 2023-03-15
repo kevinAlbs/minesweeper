@@ -44,8 +44,13 @@
             }
         });
 
+        document.addEventListener("mousedown", function (e) {
+            mouse.buttons = e.buttons;
+        });
+
         cnv.addEventListener("mouseup", function (e) {
             mouseReleased = true;
+            mouse.buttons = e.buttons;
         });
 
         obj.start = function () {
