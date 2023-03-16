@@ -22,6 +22,11 @@
         const grid_left = 10;
         let grid = grid_make(16, 30);
 
+        // Disable context menu.
+        cnv.oncontextmenu = function (e) {
+            e.preventDefault();
+        };
+
         function make_test_grid() {
             grid = grid_make(4, 3);
             grid[0][0].is_mine = true;
@@ -37,6 +42,14 @@
             offsetY: 0
         };
         let mousePrimaryReleased = false; // Set to false after processed in a tick.
+        let mouseSecondaryReleased = false; // Set to false after processed in a tick.
+        let mousePrimaryPressed = false; // Set to false after processed in a tick.
+        let mouseSecondaryPressed = false; // Set to false after processed in a tick.
+
+        const kMouseStateNone = 0;
+        const kMouseStateWillCord = 1; // When both mouse buttons have been pressed, and neither has been released.
+        const kMouseStateWillReveal = 2; // When only the primary mouse button has been pressed.
+        let mouseState = kMouseStateNone;
 
         document.addEventListener("mousemove", function (e) {
             if (e.target == cnv) {
@@ -53,11 +66,15 @@
         });
 
         document.addEventListener("mousedown", function (e) {
+            console.log(e);
             mouse.buttons = e.buttons;
+            mousePrimaryPressed = (mouse.buttons & 1) > 0;
+            mouseSecondaryPressed = (mouse.buttons & 2) > 0;
         });
 
         cnv.addEventListener("mouseup", function (e) {
             mousePrimaryReleased = (mouse.buttons & 1) > 0;
+            mouseSecondaryReleased = (mouse.buttons & 2) > 0;
             mouse.buttons = e.buttons;
         });
 
@@ -81,26 +98,73 @@
         }
 
         function loop() {
-            // Handle events.
-            if (mousePrimaryReleased) {
-                console.log("mousePrimaryReleased");
-                mousePrimaryReleased = false;
-                const coords = get_cell_coords(mouse.offsetX, mouse.offsetY);
-                if (coords) {
-                    // Attempt to reveal cell.
-                    const cell = grid[coords.i][coords.j];
-                    console.log("revealing cell " + coords.i + " , " + coords.j);
-                    if (!cell_reveal(cell)) {
-                        console.log("TODO: handle loss");
+            const mouse_coords = get_cell_coords(mouse.offsetX, mouse.offsetY);
+            const mouse_cell = mouse_coords ? grid[mouse_coords.i][mouse_coords.j] : null;
+            const cord_cells = [];
+            if (mouse_coords) {
+                for (let ip = mouse_coords.i - 1; ip <= mouse_coords.i + 1; ip++) {
+                    for (let jp = mouse_coords.j - 1; jp <= mouse_coords.j + 1; jp++) {
+                        if (ip >= 0 && ip < grid.length && jp >= 0 && jp < grid[ip].length) {
+                            cord_cells.push(grid[ip][jp]);
+                        }
                     }
                 }
             }
 
-            let coords_pressed = null;
-            if (mouse.buttons & 1) {
-                // Primary mouse button pressed.
-                coords_pressed = get_cell_coords(mouse.offsetX, mouse.offsetY);
+            // Handle events.
+            if (mousePrimaryPressed && mouseSecondaryPressed) {
+                mouseState = kMouseStateWillCord;
+                console.log(cord_cells);
             }
+            else if (mousePrimaryPressed) {
+                if (mouse.buttons & 2) {
+                    mouseState = kMouseStateWillCord;
+                } else {
+                    mouseState = kMouseStateWillReveal;
+                }
+            }
+            else if (mouseSecondaryPressed) {
+                if (mouse.buttons & 1) {
+                    mouseState = kMouseStateWillCord;
+                } else {
+                    // Toggle flag.
+                    if (mouse_cell) {
+                        if (mouse_cell.state == kCellStateFlagged) {
+                            mouse_cell.state = kCellStateUnopened;
+                        } else if (mouse_cell.state == kCellStateUnopened) {
+                            mouse_cell.state = kCellStateFlagged;
+                        }
+                    }
+                }
+            }
+
+            if (mousePrimaryReleased) {
+                if (mouseState == kMouseStateWillCord) {
+                    console.log("TODO: cord");
+                    mouseState = kMouseStateNone;
+                }
+                else if (mouseState == kMouseStateWillReveal) {
+                    if (mouse_cell) {
+                        let ok = cell_reveal(mouse_cell);
+                        if (!ok) {
+                            console.log("TODO: handle loss");
+                        }
+                    }
+                    mouseState = kMouseStateNone;
+                }
+            }
+
+            if (mouseSecondaryReleased) {
+                if (mouseState == kMouseStateWillCord) {
+                    console.log("TODO: cord");
+                    mouseState = kMouseStateNone;
+                }
+            }
+
+            mousePrimaryReleased = false;
+            mouseSecondaryReleased = false;
+            mousePrimaryPressed = false;
+            mouseSecondaryPressed = false;
 
             // Render grid.
             for (let i = 0; i < grid.length; i++) {
@@ -120,7 +184,17 @@
                             }
                         }
                     } else if (cell.state == kCellStateUnopened) {
-                        if (coords_pressed && coords_pressed.i == i && coords_pressed.j == j) {
+                        let in_cord_cells = false;
+                        for (let i = 0; i < cord_cells.length; i++) {
+                            if (cord_cells[i] == cell) {
+                                in_cord_cells = true;
+                                break;
+                            }
+                        }
+
+                        if (mouseState == kMouseStateWillReveal && mouse_cell && mouse_cell == cell) {
+                            sprite = sprite_map["cell_pressed"];
+                        } else if (mouseState == kMouseStateWillCord && in_cord_cells) {
                             sprite = sprite_map["cell_pressed"];
                         } else {
                             sprite = sprite_map["cell"];
