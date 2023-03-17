@@ -5,20 +5,63 @@
         canvas {
             border: 1px black solid;
         }
+        #config {
+            position: fixed;
+            left: 10%;
+            top: 10%;
+            width: 76%;
+            background: white;
+            border: 1px black solid;
+            padding: 1%;
+            display: none;
+        }
     </style>
 </head>
 
 <body>
+    <div id="config">
+        <a href="#" id="config_close">Close</a>
+        <p>Use secondary mouse click for chording?</p>
+        <input type="radio" name="secondary_chording" value="only_secondary" checked="checked"><label>Only secondary (convenient for track pads)</label>
+        <input type="radio" name="secondary_chording" value="both"><label>Both primary and secondary (traditional)</label>
+    </div>
     <canvas width="506" height="370"></canvas>
+    <p><a href="#" id="config_open">Settings</a></p>
 </body>
 <script>
-    // Minesweeper expert mode is 16x30.
+    const config = {
+        secondary_chording: "only_secondary"
+    };
+    // Set up config listeners.
+    {
+        document.querySelectorAll("[name=secondary_chording]").forEach((el) => {
+            el.addEventListener("click", function (e) {
+                const opts = document.querySelectorAll("[name=secondary_chording]");
+                for (let i = 0; i < opts.length; i++) {
+                    if (opts[i].checked) {
+                        config.secondary_chording = opts[i].value;
+                    }
+                }
+            });
+        });
+        document.querySelector("#config_open").addEventListener("click", function(e) {
+            e.preventDefault();
+            document.querySelector("#config").style.display = "block";
+            return false;
+        });
+        document.querySelector("#config_close").addEventListener("click", function(e) {
+            e.preventDefault();
+            document.querySelector("#config").style.display = "none";
+            return false;
+        });
+    }
+
     const mouse = {
         buttons: 0,
         offsetX: 0,
         offsetY: 0,
         primaryPressed: false, // set to false after processing.
-        secondaryPressed: false, // ste to false after processing.
+        secondaryPressed: false, // set to false after processing.
         primaryReleased: false, // set to false after processing.
         secondaryReleased: false, // ste to false after processing.
     };
@@ -131,6 +174,10 @@
                             mouse_cell.state = kCellStateUnopened;
                         } else if (mouse_cell.state == kCellStateUnopened) {
                             mouse_cell.state = kCellStateFlagged;
+                        } else if (mouse_cell.state == kCellStateOpened) {
+                            if (config.secondary_chording == "only_secondary") {
+                                mouseState = kMouseStateWillCord;
+                            }
                         }
                     }
                 }
