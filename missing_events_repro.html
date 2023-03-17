@@ -1,0 +1,48 @@
+<html>
+
+<head>
+    <style type="text/css">
+        div {
+            width: 500px;
+            height: 500px;
+            background: black;
+            /* Prevent selection */
+            user-select: none;
+            -ms-user-select: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-user-drag: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div></div>
+    <script>
+        const el = document.querySelector("div");
+        // Disable context menu on right click.
+        el.addEventListener("contextmenu", function (e) {
+            e.preventDefault();
+            return false;
+        })
+        el.addEventListener("mousedown", function (e) {
+            e.preventDefault(); // Prevent default event handling.
+            const primaryDown = (e.buttons & 1) === 1;
+            const secondaryDown = (e.buttons & 2) === 2;
+            console.log(`mousedown: primaryDown=${primaryDown}, secondaryDown=${secondaryDown}`);
+            return false;
+        });
+        el.addEventListener("dblclick", function (e) {
+            e.preventDefault();
+            return false;
+        })
+        el.addEventListener("auxclick", function (e) {
+            e.preventDefault();
+            return false;
+        })
+    </script>
+</body>
+
+</html>
