@@ -5,6 +5,7 @@
         canvas {
             border: 1px black solid;
         }
+
         #config {
             position: fixed;
             left: 10%;
@@ -22,8 +23,10 @@
     <div id="config">
         <a href="#" id="config_close">Close</a>
         <p>Use secondary mouse click for chording?</p>
-        <input type="radio" name="secondary_chording" value="only_secondary" checked="checked"><label>Only secondary (convenient for track pads)</label>
-        <input type="radio" name="secondary_chording" value="both"><label>Both primary and secondary (traditional)</label>
+        <input type="radio" name="secondary_chording" value="only_secondary" checked="checked"><label>Only secondary
+            (convenient for track pads)</label>
+        <input type="radio" name="secondary_chording" value="both"><label>Both primary and secondary
+            (traditional)</label>
     </div>
     <canvas width="506" height="370"></canvas>
     <p><a href="#" id="config_open">Settings</a></p>
@@ -44,12 +47,12 @@
                 }
             });
         });
-        document.querySelector("#config_open").addEventListener("click", function(e) {
+        document.querySelector("#config_open").addEventListener("click", function (e) {
             e.preventDefault();
             document.querySelector("#config").style.display = "block";
             return false;
         });
-        document.querySelector("#config_close").addEventListener("click", function(e) {
+        document.querySelector("#config_close").addEventListener("click", function (e) {
             e.preventDefault();
             document.querySelector("#config").style.display = "none";
             return false;
@@ -330,7 +333,15 @@
             {
                 let smileySprite = sprite_map["smiley"];
                 if (smileyPressed) {
+                    smileySprite = sprite_map["smiley_pressed"];
+                } else if (mouseState == kMouseStateWillCord || mouseState == kMouseStateWillReveal) {
                     smileySprite = sprite_map["smiley_o"];
+                }
+                else if (losing_mines.length > 0) {
+                    smileySprite = sprite_map["smiley_dead"];
+                }
+                else if (won) {
+                    smileySprite = sprite_map["smiley_glasses"];
                 }
                 ctx.drawImage(smileySprite, smiley.x, smiley.y);
             }
