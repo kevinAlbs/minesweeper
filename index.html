@@ -250,13 +250,14 @@
 
             // Check if smiley pressed.
             let smileyPressed = false;
-            if ((mouse.buttons & 1) && is_over_smiley ()) {
+            if ((mouse.buttons & 1) && is_over_smiley()) {
                 smileyPressed = true;
+                // Match Minesweeper-X: When smiley is pressed, do not enter reveal / chord state.
+                mouseState = kMouseStateNone;
             }
-            if (mouse.primaryReleased && is_over_smiley ()) {
-                reset ();
+            if (mouse.primaryReleased && is_over_smiley()) {
+                reset();
             }
-            console.log(is_over_smiley());
 
             mouse.primaryReleased = false;
             mouse.secondaryReleased = false;
