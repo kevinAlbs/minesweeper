@@ -107,6 +107,12 @@
         let mouseState = kMouseStateNone;
         let losing_mines = [];
         let won = false;
+        const smiley = {
+            x: 100,
+            y: 20,
+            width: 24,
+            height: 24
+        };
 
         function reset() {
             // grid = grid_make(16, 30);
@@ -137,6 +143,15 @@
                 return null;
             }
             return { i: i, j: j };
+        }
+
+        function is_over_smiley() {
+            if (mouse.offsetX >= smiley.x && mouse.offsetX <= smiley.x + smiley.width) {
+                if (mouse.offsetY >= smiley.y && mouse.offsetY <= smiley.y + smiley.height) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         function tick() {
@@ -233,6 +248,16 @@
                 mouseState = kMouseStateNone;
             }
 
+            // Check if smiley pressed.
+            let smileyPressed = false;
+            if ((mouse.buttons & 1) && is_over_smiley ()) {
+                smileyPressed = true;
+            }
+            if (mouse.primaryReleased && is_over_smiley ()) {
+                reset ();
+            }
+            console.log(is_over_smiley());
+
             mouse.primaryReleased = false;
             mouse.secondaryReleased = false;
             mouse.primaryPressed = false;
@@ -298,6 +323,15 @@
 
                     ctx.drawImage(sprite, grid_left + 16 * j, grid_top + 16 * i);
                 }
+            }
+
+            // Render smiley.
+            {
+                let smileySprite = sprite_map["smiley"];
+                if (smileyPressed) {
+                    smileySprite = sprite_map["smiley_o"];
+                }
+                ctx.drawImage(smileySprite, smiley.x, smiley.y);
             }
         }
 
