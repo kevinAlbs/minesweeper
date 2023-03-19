@@ -285,6 +285,7 @@
                             time_stopped = Date.now();
                         } else if (grid_state(grid) == kGridStateWon) {
                             won = true;
+                            time_stopped = Date.now();
                         }
                     }
                     mouseState = kMouseStateNone;
