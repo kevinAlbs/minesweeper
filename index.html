@@ -251,7 +251,7 @@
                             grid_set_mines(grid, mouse_coords.i, mouse_coords.j, mine_count);
                             mines_placed = true;
                         }
-                        if (!time_started) {
+                        if (!time_started && mouse_cell.state == kCellStateUnopened) {
                             time_started = Date.now();
                         }
                         let ok = cell_reveal(mouse_cell);
