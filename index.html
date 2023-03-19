@@ -4,6 +4,7 @@
     <style type="text/css">
         canvas {
             border: 1px black solid;
+            background-image: url("minesweeper-expert.png");
         }
 
         #config {
@@ -120,6 +121,8 @@
         let mine_count;
         const doing_small_test = true;
         let flags_placed;
+        let time_started;
+        let time_stopped;
 
         function reset() {
             if (doing_small_test) {
@@ -140,6 +143,8 @@
             losing_mines = [];
             won = false;
             flags_placed = 0;
+            time_started = null; // Unset.
+            time_stopped = null; // Unset.
         }
 
         obj.start = function () {
@@ -223,8 +228,10 @@
                         let res = cell_chord(mouse_cell);
                         if (!res.ok) {
                             losing_mines = res.losing_mines;
+                            time_stopped = Date.now();
                         } else if (grid_state(grid) == kGridStateWon) {
                             won = true;
+                            time_stopped = Date.now();
                             // Flag any unflagged mines so the remaining mine count is correct.
                             for (let i = 0; i < grid.length; i++) {
                                 for (let j = 0; j < grid[i].length; j++) {
@@ -244,11 +251,16 @@
                             grid_set_mines(grid, mouse_coords.i, mouse_coords.j, mine_count);
                             mines_placed = true;
                         }
+                        if (!time_started) {
+                            time_started = Date.now();
+                        }
                         let ok = cell_reveal(mouse_cell);
                         if (!ok) {
                             losing_mines = [mouse_cell];
+                            time_stopped = Date.now();
                         } else if (grid_state(grid) == kGridStateWon) {
                             won = true;
+                            time_stopped = Date.now();
                             // Flag any unflagged mines so the remaining mine count is correct.
                             for (let i = 0; i < grid.length; i++) {
                                 for (let j = 0; j < grid[i].length; j++) {
@@ -270,6 +282,7 @@
                         let res = cell_chord(mouse_cell);
                         if (!res.ok) {
                             losing_mines = res.losing_mines;
+                            time_stopped = Date.now();
                         } else if (grid_state(grid) == kGridStateWon) {
                             won = true;
                         }
@@ -401,6 +414,39 @@
                 }
                 for (let i = 0; i < digits.length; i++) {
                     ctx.drawImage(sprite_map[digits[i]], 17 + i * 13, 16);
+                }
+            }
+
+            // Render clock.
+            {
+                let seconds = 0;
+                if (time_started) {
+                    let diff_ms;
+                    if (time_stopped) {
+                        diff_ms = time_stopped - time_started;
+                    } else {
+                        diff_ms = Date.now() - time_started;
+                    }
+                    seconds = Math.floor(diff_ms / 1000);
+                }
+                if (seconds > 999) {
+                    seconds = 999;
+                }
+
+                let digits = ["d0", "d0", "d0"];
+                if (seconds > 0) {
+                    digits[2] = "d" + (seconds % 10);
+                    seconds = Math.floor(seconds / 10);
+                }
+                if (seconds > 0) {
+                    digits[1] = "d" + (seconds % 10);
+                    seconds = Math.floor(seconds / 10);
+                }
+                if (seconds[0] != "ddash" && seconds > 0) {
+                    seconds[0] = "d" + (seconds % 10);
+                }
+                for (let i = 0; i < digits.length; i++) {
+                    ctx.drawImage(sprite_map[digits[i]], 446 + i * 13, 16);
                 }
             }
         }
