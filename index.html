@@ -28,7 +28,7 @@
         <input type="radio" name="secondary_chording" value="both"><label>Both primary and secondary
             (traditional)</label>
     </div>
-    <canvas width="506" height="370"></canvas>
+    <canvas width="504" height="323"></canvas>
     <p><a href="#" id="config_open">Settings</a></p>
 </body>
 <script>
@@ -100,8 +100,8 @@
         const obj = {};
         const cnv = document.querySelector("canvas");
         const ctx = cnv.getContext("2d");
-        const grid_top = 10;
-        const grid_left = 10;
+        const grid_top = 55;
+        const grid_left = 12;
         let grid;
 
         const kMouseStateNone = 0;
@@ -111,21 +111,35 @@
         let losing_mines = [];
         let won = false;
         const smiley = {
-            x: 100,
-            y: 20,
+            x: 240,
+            y: 16,
             width: 24,
             height: 24
         };
+        let mines_placed;
+        let mine_count;
+        const doing_small_test = true;
+        let flags_placed;
 
         function reset() {
-            // grid = grid_make(16, 30);
-            grid = grid_make(4, 3);
-            grid[0][0].is_mine = true;
-            grid[1][1].is_mine = true;
-            grid[2][2].is_mine = true;
+            if (doing_small_test) {
+                // Test with 3 mines placed deterministically on a 4x3 board.
+                grid = grid_make(4, 3);
+                grid[0][0].is_mine = true;
+                grid[1][1].is_mine = true;
+                grid[2][2].is_mine = true;
+                mine_count = 3;
+                mines_placed = true;
+            }
+            else {
+                grid = grid_make(16, 30);
+                mine_count = 99;
+                mines_placed = false;
+            }
             mouseState = kMouseStateNone;
             losing_mines = [];
             won = false;
+            flags_placed = 0;
         }
 
         obj.start = function () {
@@ -187,11 +201,13 @@
                     mouseState = kMouseStateWillCord;
                 } else {
                     // Toggle flag.
-                    if (mouse_cell) {
+                    if (mouse_cell && !won && losing_mines.length == 0) {
                         if (mouse_cell.state == kCellStateFlagged) {
                             mouse_cell.state = kCellStateUnopened;
+                            flags_placed--;
                         } else if (mouse_cell.state == kCellStateUnopened) {
                             mouse_cell.state = kCellStateFlagged;
+                            flags_placed++;
                         } else if (mouse_cell.state == kCellStateOpened) {
                             if (config.secondary_chording == "only_secondary") {
                                 mouseState = kMouseStateWillCord;
@@ -209,17 +225,39 @@
                             losing_mines = res.losing_mines;
                         } else if (grid_state(grid) == kGridStateWon) {
                             won = true;
+                            // Flag any unflagged mines so the remaining mine count is correct.
+                            for (let i = 0; i < grid.length; i++) {
+                                for (let j = 0; j < grid[i].length; j++) {
+                                    if (grid[i][j].is_mine && grid[i][j].state == kCellStateUnopened) {
+                                        flags_placed++;
+                                        grid[i][j].state = kCellStateFlagged;
+                                    }
+                                }
+                            }
                         }
                     }
                     mouseState = kMouseStateNone;
                 }
                 else if (mouseState == kMouseStateWillReveal) {
                     if (mouse_cell) {
+                        if (!mines_placed) {
+                            grid_set_mines(grid, mouse_coords.i, mouse_coords.j, mine_count);
+                            mines_placed = true;
+                        }
                         let ok = cell_reveal(mouse_cell);
                         if (!ok) {
                             losing_mines = [mouse_cell];
                         } else if (grid_state(grid) == kGridStateWon) {
                             won = true;
+                            // Flag any unflagged mines so the remaining mine count is correct.
+                            for (let i = 0; i < grid.length; i++) {
+                                for (let j = 0; j < grid[i].length; j++) {
+                                    if (grid[i][j].is_mine && grid[i][j].state == kCellStateUnopened) {
+                                        flags_placed++;
+                                        grid[i][j].state = kCellStateFlagged;
+                                    }
+                                }
+                            }
                         }
                     }
                     mouseState = kMouseStateNone;
@@ -319,12 +357,6 @@
                         }
                     }
 
-                    if (won) {
-                        if (cell.is_mine) {
-                            sprite = sprite_map["flag"];
-                        }
-                    }
-
                     ctx.drawImage(sprite, grid_left + 16 * j, grid_top + 16 * i);
                 }
             }
@@ -344,6 +376,32 @@
                     smileySprite = sprite_map["smiley_glasses"];
                 }
                 ctx.drawImage(smileySprite, smiley.x, smiley.y);
+            }
+
+            // Render remaining mines count.
+            {
+                let remaining_mines = mine_count - flags_placed;
+                remaining_mines %= 1000; // Only display three digits.
+                let digits = ["d0", "d0", "d0"];
+                if (remaining_mines < 0) {
+                    digits[0] = "ddash";
+                    remaining_mines *= -1;
+                    remaining_mines %= 100; // Only display 2 digits.
+                }
+                if (remaining_mines > 0) {
+                    digits[2] = "d" + (remaining_mines % 10);
+                    remaining_mines = Math.floor(remaining_mines / 10);
+                }
+                if (remaining_mines > 0) {
+                    digits[1] = "d" + (remaining_mines % 10);
+                    remaining_mines = Math.floor(remaining_mines / 10);
+                }
+                if (digits[0] != "ddash" && remaining_mines > 0) {
+                    digits[0] = "d" + (remaining_mines % 10);
+                }
+                for (let i = 0; i < digits.length; i++) {
+                    ctx.drawImage(sprite_map[digits[i]], 17 + i * 13, 16);
+                }
             }
         }
 
