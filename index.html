@@ -4,7 +4,6 @@
     <style type="text/css">
         canvas {
             border: 1px black solid;
-            background-image: url("minesweeper-expert.png");
         }
 
         #config {
@@ -28,13 +27,21 @@
             (convenient for track pads)</label>
         <input type="radio" name="secondary_chording" value="both"><label>Both primary and secondary
             (traditional)</label>
+        <p>Difficulty</p>
+        <input type="radio" name="difficulty" value="Beginner" id="difficulty_Beginner"><label
+            for="difficulty_Beginner">Beginner</label>
+        <input type="radio" name="difficulty" value="Intermediate" id="difficulty_Intermediate"><label
+            for="difficulty_Intermediate">Intermediate</label>
+        <input type="radio" name="difficulty" value="Expert" id="difficulty_Expert" checked="checked"><label
+            for="difficulty_Expert">Expert</label>
     </div>
     <canvas width="504" height="323"></canvas>
     <p><a href="#" id="config_open">Settings</a></p>
 </body>
 <script>
     const config = {
-        secondary_chording: "only_secondary"
+        secondary_chording: "only_secondary",
+        difficulty: "Expert"
     };
     // Set up config listeners.
     {
@@ -48,6 +55,14 @@
                 }
             });
         });
+        document.querySelectorAll("[name=difficulty]").forEach((el) => {
+            el.addEventListener("change", (e) => {
+                config.difficulty = e.target.value;
+                if (game) {
+                    game.reset();
+                }
+            })
+        })
         document.querySelector("#config_open").addEventListener("click", function (e) {
             e.preventDefault();
             document.querySelector("#config").style.display = "block";
@@ -93,6 +108,7 @@
             e.preventDefault();
             return false;
         });
+
     }
 
 
@@ -112,20 +128,27 @@
         let losing_mines = [];
         let won = false;
         const smiley = {
-            x: 240,
+            x: 0, // set in reset.
             y: 16,
             width: 24,
             height: 24
         };
         let mines_placed;
         let mine_count;
-        const doing_small_test = true;
+        let difficulty = "Beginner";
         let flags_placed;
         let time_started;
         let time_stopped;
+        let clock_x = 0;
+        const doing_small_test = false;
 
         function reset() {
+            let difficulty = config.difficulty;
             if (doing_small_test) {
+                difficulty = "Test";
+            }
+
+            if (difficulty == "Test") {
                 // Test with 3 mines placed deterministically on a 4x3 board.
                 grid = grid_make(4, 3);
                 grid[0][0].is_mine = true;
@@ -133,11 +156,41 @@
                 grid[2][2].is_mine = true;
                 mine_count = 3;
                 mines_placed = true;
+                cnv.style.backgroundImage = "url('minesweeper-expert.png')";
+                cnv.setAttribute("width", "504");
+                cnv.setAttribute("height", "323");
+                smiley.x = 240;
+                clock_x = 446;
             }
-            else {
+            else if (difficulty == "Expert") {
                 grid = grid_make(16, 30);
                 mine_count = 99;
                 mines_placed = false;
+                cnv.style.backgroundImage = "url('minesweeper-expert.png')";
+                cnv.setAttribute("width", "504");
+                cnv.setAttribute("height", "323");
+                smiley.x = 240;
+                clock_x = 446;
+            } else if (difficulty == "Intermediate") {
+                grid = grid_make(16, 16);
+                mine_count = 40;
+                mines_placed = false;
+                cnv.style.backgroundImage = "url('minesweeper-intermediate.png')";
+                cnv.setAttribute("width", "280");
+                cnv.setAttribute("height", "323");
+                smiley.x = 128;
+                clock_x = 222;
+            } else if (difficulty == "Beginner") {
+                grid = grid_make(8, 8);
+                mine_count = 10;
+                mines_placed = false;
+                cnv.style.backgroundImage = "url('minesweeper-beginner.png')";
+                cnv.setAttribute("width", "152");
+                cnv.setAttribute("height", "195");
+                smiley.x = 64;
+                clock_x = 93;
+            } else {
+                console.error("Unexpected difficulty: " + difficulty);
             }
             mouseState = kMouseStateNone;
             losing_mines = [];
@@ -150,6 +203,10 @@
         obj.start = function () {
             reset();
             window.requestAnimationFrame(loop);
+        }
+
+        obj.reset = function () {
+            reset();
         }
 
         // get_cell_coords returns the coordinates of a cell from a mouse position
@@ -447,7 +504,7 @@
                     seconds[0] = "d" + (seconds % 10);
                 }
                 for (let i = 0; i < digits.length; i++) {
-                    ctx.drawImage(sprite_map[digits[i]], 446 + i * 13, 16);
+                    ctx.drawImage(sprite_map[digits[i]], clock_x + i * 13, 16);
                 }
             }
         }
