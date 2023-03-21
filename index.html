@@ -113,7 +113,8 @@
         });
     }
 
-    const mouse = {
+    // gMouse is the global mouse object.
+    const gMouse = {
         buttons: 0,
         offsetX: 0,
         offsetY: 0,
@@ -125,21 +126,21 @@
     // Set up mouse events.
     {
         document.addEventListener("mousemove", function (e) {
-            mouse.offsetX = e.offsetX;
-            mouse.offsetY = e.offsetY;
-            mouse.buttons = e.buttons;
+            gMouse.offsetX = e.offsetX;
+            gMouse.offsetY = e.offsetY;
+            gMouse.buttons = e.buttons;
         });
 
         document.addEventListener("mousedown", function (e) {
-            mouse.buttons = e.buttons;
-            mouse.primaryPressed = (mouse.buttons & 1) > 0;
-            mouse.secondaryPressed = (mouse.buttons & 2) > 0;
+            gMouse.buttons = e.buttons;
+            gMouse.primaryPressed = (gMouse.buttons & 1) > 0;
+            gMouse.secondaryPressed = (gMouse.buttons & 2) > 0;
         });
 
         document.addEventListener("mouseup", function (e) {
-            mouse.primaryReleased = (mouse.buttons & 1) > 0;
-            mouse.secondaryReleased = (mouse.buttons & 2) > 0;
-            mouse.buttons = e.buttons;
+            gMouse.primaryReleased = (gMouse.buttons & 1) > 0;
+            gMouse.secondaryReleased = (gMouse.buttons & 2) > 0;
+            gMouse.buttons = e.buttons;
         });
 
         document.addEventListener("contextmenu", function (e) {
@@ -151,8 +152,15 @@
 
 
     // Begin game logic. Uses grid. Uses sprite_map.
-    const game_make = function () {
-        const obj = {};
+
+    const kGridTop = 55;
+    const kGridLeft = 12;
+    const kCellSize = 16;
+    const game_make = function (mouse) {
+        const obj = {
+            time_started: null,
+            time_stopped: null
+        };
         const cnv = document.querySelector("canvas");
         const ctx = cnv.getContext("2d");
         const grid_top = 55;
@@ -175,13 +183,18 @@
         let mine_count;
         let difficulty = "Beginner";
         let flags_placed;
-        let time_started;
-        let time_stopped;
         let clock_x = 0;
         const doing_small_test = false;
 
-        function reset() {
+        // opts may contain 'difficulty' to determine board size.
+        // opts may contain 'grid' to override the grid.
+        function reset(opts) {
             let difficulty = config.difficulty;
+
+            if (opts && "difficulty" in opts) {
+                difficulty = opts.difficulty;
+            }
+
             if (doing_small_test) {
                 difficulty = "Test";
             }
@@ -235,8 +248,15 @@
             losing_mines = [];
             won = false;
             flags_placed = 0;
-            time_started = null; // Unset.
-            time_stopped = null; // Unset.
+            obj.time_started = null; // Unset.
+            obj.time_stopped = null; // Unset.
+
+            if (opts && 'grid' in opts) {
+                // Set fixed grid for testing.
+                grid = opts.grid;
+                // Assume test grid already has mines placed.
+                mines_placed = true;
+            }
         }
 
         obj.start = function () {
@@ -244,8 +264,8 @@
             window.requestAnimationFrame(loop);
         }
 
-        obj.reset = function () {
-            reset();
+        obj.reset = function (opts) {
+            reset(opts);
         }
 
         // get_cell_coords returns the coordinates of a cell from a mouse position
@@ -272,7 +292,7 @@
             return false;
         }
 
-        function tick() {
+        obj.tick = function () {
             const mouse_coords = get_cell_coords(mouse.offsetX, mouse.offsetY);
             const mouse_cell = mouse_coords ? grid[mouse_coords.i][mouse_coords.j] : null;
             const cord_cells = [];
@@ -324,10 +344,10 @@
                         let res = cell_chord(mouse_cell);
                         if (!res.ok) {
                             losing_mines = res.losing_mines;
-                            time_stopped = Date.now();
+                            obj.time_stopped = Date.now();
                         } else if (grid_state(grid) == kGridStateWon) {
                             won = true;
-                            time_stopped = Date.now();
+                            obj.time_stopped = Date.now();
                             // Flag any unflagged mines so the remaining mine count is correct.
                             for (let i = 0; i < grid.length; i++) {
                                 for (let j = 0; j < grid[i].length; j++) {
@@ -347,16 +367,16 @@
                             grid_set_mines(grid, mouse_coords.i, mouse_coords.j, mine_count);
                             mines_placed = true;
                         }
-                        if (!time_started && mouse_cell.state == kCellStateUnopened) {
-                            time_started = Date.now();
+                        if (!obj.time_started && mouse_cell.state == kCellStateUnopened) {
+                            obj.time_started = Date.now();
                         }
                         let ok = cell_reveal(mouse_cell);
                         if (!ok) {
                             losing_mines = [mouse_cell];
-                            time_stopped = Date.now();
+                            obj.time_stopped = Date.now();
                         } else if (grid_state(grid) == kGridStateWon) {
                             won = true;
-                            time_stopped = Date.now();
+                            obj.time_stopped = Date.now();
                             // Flag any unflagged mines so the remaining mine count is correct.
                             for (let i = 0; i < grid.length; i++) {
                                 for (let j = 0; j < grid[i].length; j++) {
@@ -378,10 +398,10 @@
                         let res = cell_chord(mouse_cell);
                         if (!res.ok) {
                             losing_mines = res.losing_mines;
-                            time_stopped = Date.now();
+                            obj.time_stopped = Date.now();
                         } else if (grid_state(grid) == kGridStateWon) {
                             won = true;
-                            time_stopped = Date.now();
+                            obj.time_stopped = Date.now();
                         }
                     }
                     mouseState = kMouseStateNone;
@@ -517,12 +537,12 @@
             // Render clock.
             {
                 let seconds = 0;
-                if (time_started) {
+                if (obj.time_started) {
                     let diff_ms;
-                    if (time_stopped) {
-                        diff_ms = time_stopped - time_started;
+                    if (obj.time_stopped) {
+                        diff_ms = obj.time_stopped - obj.time_started;
                     } else {
-                        diff_ms = Date.now() - time_started;
+                        diff_ms = Date.now() - obj.time_started;
                     }
                     seconds = Math.floor(diff_ms / 1000);
                 }
@@ -549,7 +569,7 @@
         }
 
         function loop() {
-            tick();
+            obj.tick();
             window.requestAnimationFrame(loop);
         }
 
@@ -570,10 +590,167 @@
         }
         obj.selftest = function () {
             test_get_cell();
-            test_reveal();
         }
 
         return obj;
+    }
+
+    // Test game.
+    {
+        function test_fixture_make() {
+            let t = {};
+
+            t.mouse = {
+                buttons: 0,
+                offsetX: 0,
+                offsetY: 0,
+                primaryPressed: false, // set to false after processing.
+                secondaryPressed: false, // set to false after processing.
+                primaryReleased: false, // set to false after processing.
+                secondaryReleased: false, // ste to false after processing.
+            };
+
+            // Make a sample grid.
+            t.grid = grid_make(4, 3);
+            t.grid[0][0].is_mine = true;
+            t.grid[1][1].is_mine = true;
+            t.grid[2][2].is_mine = true;
+
+            t.mouse_move = function (i, j) {
+                t.mouse.offsetX = kGridLeft + (j * kCellSize);
+                t.mouse.offsetY = kGridTop + (i * kCellSize);
+            }
+
+            t.mouse_pressSecondary = function () {
+                t.mouse.buttons |= 2;
+                t.mouse.secondaryPressed = true;
+            }
+
+            t.mouse_releaseSecondary = function () {
+                t.mouse.buttons &= ~2;
+                t.mouse.secondaryReleased = true;
+            }
+
+            t.mouse_pressPrimary = function () {
+                t.mouse.buttons |= 1;
+                t.mouse.primaryPressed = true;
+            }
+
+            t.mouse_releasePrimary = function () {
+                t.mouse.buttons &= ~1;
+                t.mouse.primaryReleased = true;
+            }
+
+            t.reveal = function (g, i, j) {
+                t.mouse_move(i, j);
+                t.mouse_pressPrimary();
+                g.tick();
+                t.mouse_releasePrimary();
+                g.tick();
+            }
+
+            t.flag = function (g, i, j) {
+                t.mouse_move(i, j);
+                t.mouse_pressSecondary();
+                g.tick();
+                t.mouse_releaseSecondary();
+                g.tick();
+            }
+
+            t.reveal_all = function (g, grid) {
+                for (let i = 0; i < grid.length; i++) {
+                    for (let j = 0; j < grid[i].length; j++) {
+                        if (!grid[i][j].is_mine) {
+                            t.reveal(g, i, j);
+                        }
+                    }
+                }
+            }
+
+            t.chord = function (g, i, j) {
+                t.mouse_move(i, j);
+                t.mouse_pressSecondary();
+                g.tick();
+                t.mouse_releaseSecondary();
+                g.tick();
+            }
+            return t;
+        }
+
+        function test_timer() {
+            // Setting a flag does not start the timer.
+            {
+                const t = test_fixture_make();
+                const g = game_make(t.mouse);
+                g.reset({ grid: t.grid });
+                t.mouse_move(0, 1);
+                t.mouse_pressSecondary();
+                g.tick();
+                console.assert(!g.time_started);
+            }
+            // Revealing starts the timer.
+            {
+                const t = test_fixture_make();
+                const g = game_make(t.mouse);
+                g.reset({ grid: t.grid });
+                t.mouse_move(0, 1);
+                t.mouse_pressPrimary();
+                g.tick();
+                t.mouse_releasePrimary();
+                g.tick();
+                console.assert(g.time_started);
+            }
+            // Clicking off grid does not start the timer.
+            {
+                const t = test_fixture_make();
+                const g = game_make(t.mouse);
+                g.reset({ grid: t.grid });
+                t.mouse_move(0, -1);
+                t.mouse_pressPrimary();
+                g.tick();
+                t.mouse_releasePrimary();
+                g.tick();
+                console.assert(!g.time_started);
+            }
+            // Winning stops the timer.
+            {
+                const t = test_fixture_make();
+                const g = game_make(t.mouse);
+                g.reset({ grid: t.grid });
+                console.assert(!g.time_stopped);
+                t.reveal_all(g, t.grid);
+                console.assert(g.time_stopped);
+            }
+            // Winning by chording stops the timer.
+            {
+                const t = test_fixture_make();
+                const g = game_make(t.mouse);
+                g.reset({ grid: t.grid });
+                console.assert(!g.time_stopped);
+                t.flag(g, 0, 0);
+                t.flag(g, 1, 1);
+                t.flag(g, 2, 2);
+                t.reveal(g, 0, 1);
+                t.chord(g, 0, 1);
+                t.chord(g, 1, 0);
+                t.chord(g, 2, 1);
+                console.assert(g.time_stopped);
+            }
+            // Losing stops the timer.
+            {
+                const t = test_fixture_make();
+                const g = game_make(t.mouse);
+                g.reset({ grid: t.grid });
+                console.assert(!g.time_stopped);
+                t.reveal(g, 0, 0);
+                g.tick();
+                console.assert(g.time_stopped);
+            }
+        }
+
+        function test_game() {
+            test_timer();
+        }
     }
 
     let game = null;
@@ -608,7 +785,8 @@
                 for (let i = 0; i < sprite_names.length; i++) {
                     sprite_map[sprite_names[i]] = sprites[i];
                 }
-                game = game_make();
+                test_game();
+                game = game_make(gMouse);
                 game.start();
             });
 
