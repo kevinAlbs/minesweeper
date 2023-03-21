@@ -560,7 +560,7 @@
                     seconds = Math.floor(seconds / 10);
                 }
                 if (seconds[0] != "ddash" && seconds > 0) {
-                    seconds[0] = "d" + (seconds % 10);
+                    digits[0] = "d" + (seconds % 10);
                 }
                 for (let i = 0; i < digits.length; i++) {
                     ctx.drawImage(sprite_map[digits[i]], clock_x + i * 13, 16);
