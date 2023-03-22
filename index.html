@@ -159,7 +159,8 @@
     const game_make = function (mouse) {
         const obj = {
             time_started: null,
-            time_stopped: null
+            time_stopped: null,
+            flags_placed: 0
         };
         const cnv = document.querySelector("canvas");
         const ctx = cnv.getContext("2d");
@@ -182,7 +183,6 @@
         let mines_placed;
         let mine_count;
         let difficulty = "Beginner";
-        let flags_placed;
         let clock_x = 0;
         const doing_small_test = false;
 
@@ -247,7 +247,7 @@
             mouseState = kMouseStateNone;
             losing_mines = [];
             won = false;
-            flags_placed = 0;
+            obj.flags_placed = 0;
             obj.time_started = null; // Unset.
             obj.time_stopped = null; // Unset.
 
@@ -325,10 +325,10 @@
                     if (mouse_cell && !won && losing_mines.length == 0) {
                         if (mouse_cell.state == kCellStateFlagged) {
                             mouse_cell.state = kCellStateUnopened;
-                            flags_placed--;
+                            obj.flags_placed--;
                         } else if (mouse_cell.state == kCellStateUnopened) {
                             mouse_cell.state = kCellStateFlagged;
-                            flags_placed++;
+                            obj.flags_placed++;
                         } else if (mouse_cell.state == kCellStateOpened) {
                             if (config.secondary_chording == "only_secondary") {
                                 mouseState = kMouseStateWillCord;
@@ -352,7 +352,7 @@
                             for (let i = 0; i < grid.length; i++) {
                                 for (let j = 0; j < grid[i].length; j++) {
                                     if (grid[i][j].is_mine && grid[i][j].state == kCellStateUnopened) {
-                                        flags_placed++;
+                                        obj.flags_placed++;
                                         grid[i][j].state = kCellStateFlagged;
                                     }
                                 }
@@ -381,7 +381,7 @@
                             for (let i = 0; i < grid.length; i++) {
                                 for (let j = 0; j < grid[i].length; j++) {
                                     if (grid[i][j].is_mine && grid[i][j].state == kCellStateUnopened) {
-                                        flags_placed++;
+                                        obj.flags_placed++;
                                         grid[i][j].state = kCellStateFlagged;
                                     }
                                 }
@@ -510,7 +510,7 @@
 
             // Render remaining mines count.
             {
-                let remaining_mines = mine_count - flags_placed;
+                let remaining_mines = mine_count - obj.flags_placed;
                 remaining_mines %= 1000; // Only display three digits.
                 let digits = ["d0", "d0", "d0"];
                 if (remaining_mines < 0) {
@@ -748,8 +748,32 @@
             }
         }
 
+        function test_flags_placed() {
+            // flags_placed is incremented on flag placement.
+            {
+                const t = test_fixture_make();
+                const g = game_make(t.mouse);
+                g.reset({ grid: t.grid });
+                console.assert(g.flags_placed == 0);
+                t.flag(g, 0, 0);
+                console.assert(g.flags_placed == 1);
+            }
+            // flags_placed is set to 0 on reset.
+            {
+                const t = test_fixture_make();
+                const g = game_make(t.mouse);
+                g.reset({ grid: t.grid });
+                console.assert(g.flags_placed == 0);
+                t.flag(g, 0, 0);
+                console.assert(g.flags_placed == 1);
+                g.reset();
+                console.assert(g.flags_placed == 0);
+            }
+        }
+
         function test_game() {
             test_timer();
+            test_flags_placed();
         }
     }
 
