@@ -185,11 +185,61 @@
         let difficulty = "Beginner";
         let clock_x = 0;
         const doing_small_test = false;
+        let enable_tracing = false;
+        let trace = [];
+        let last_mouse_state;
+
+        obj.has_won = function () {
+            return won;
+        }
+
+        obj.has_lost = function () {
+            return losing_mines.length > 0;
+        }
+
+        obj.has_placed_mines = function () {
+            return mines_placed;
+        }
+
+        obj.get_mouse_state = function () {
+            return mouseState;
+        }
+
+        obj.get_trace = function () {
+            return trace;
+        }
+
+        obj.apply_trace = function (trace) {
+            console.assert(trace.length > 0, "expected trace of > 0 events, got: " + trace.length);
+            const first = trace[0];
+            console.assert(first.event == "place_mines", "expected first event to be 'place_mines', got: ", first);
+            // Recreate the grid.
+            const trace_grid = grid_make(first.grid.length, first.grid[0].length);
+            for (let i = 0; i < first.grid.length; i++) {
+                for (let j = 0; j < first.grid[i].length; j++) {
+                    trace_grid[i][j].state = first.grid[i][j].state;
+                    trace_grid[i][j].is_mine = first.grid[i][j].is_mine;
+                }
+            }
+            reset({
+                difficulty: first.difficulty,
+                grid: trace_grid,
+                enable_tracing: false
+            });
+            const mouse_old = mouse;
+            for (let i = 1; i < trace.length; i++) {
+                console.assert(trace[i].event == "mouse", "expected event to be 'mouse', got: ", trace[i]);
+                mouse = trace[i].mouse;
+                obj.tick();
+            }
+            // Restore mouse.
+            mouse = mouse_old;
+        }
 
         // opts may contain 'difficulty' to determine board size.
         // opts may contain 'grid' to override the grid.
         function reset(opts) {
-            let difficulty = config.difficulty;
+            difficulty = config.difficulty;
 
             if (opts && "difficulty" in opts) {
                 difficulty = opts.difficulty;
@@ -251,16 +301,30 @@
             obj.time_started = null; // Unset.
             obj.time_stopped = null; // Unset.
 
+            trace = [];
+            enable_tracing = false;
+            if (opts && 'enable_tracing' in opts && opts.enable_tracing) {
+                enable_tracing = opts.enable_tracing;
+            }
+
             if (opts && 'grid' in opts) {
                 // Set fixed grid for testing.
                 grid = opts.grid;
                 // Assume test grid already has mines placed.
                 mines_placed = true;
+                if (enable_tracing) {
+                    trace.push({
+                        "event": "place_mines",
+                        "grid": grid_to_json(grid),
+                        "difficulty": difficulty,
+                        "mouse": Object.assign({}, mouse)
+                    });
+                }
             }
         }
 
-        obj.start = function () {
-            reset();
+        obj.start = function (opts) {
+            reset(opts);
             window.requestAnimationFrame(loop);
         }
 
@@ -293,6 +357,16 @@
         }
 
         obj.tick = function () {
+            if (enable_tracing && trace.length > 0) {
+                // If the mouse changes in any state aside from movement, trace it.
+                const lastMouse = trace[trace.length - 1].mouse;
+                if (mouse.buttons != lastMouse.buttons || mouse.primaryPressed != lastMouse.primaryPressed || mouse.primaryReleased != lastMouse.primaryReleased || mouse.secondaryPressed != lastMouse.secondaryPressed || mouse.secondaryReleased != lastMouse.secondaryReleased) {
+                    trace.push({
+                        "event": "mouse",
+                        "mouse": Object.assign({}, mouse)
+                    });
+                }
+            }
             const mouse_coords = get_cell_coords(mouse.offsetX, mouse.offsetY);
             const mouse_cell = mouse_coords ? grid[mouse_coords.i][mouse_coords.j] : null;
             const cord_cells = [];
@@ -366,6 +440,14 @@
                         if (!mines_placed) {
                             grid_set_mines(grid, mouse_coords.i, mouse_coords.j, mine_count);
                             mines_placed = true;
+                            if (enable_tracing) {
+                                trace.push({
+                                    "event": "place_mines",
+                                    "grid": grid_to_json(grid),
+                                    "difficulty": difficulty,
+                                    "mouse": Object.assign({}, mouse)
+                                });
+                            }
                         }
                         if (!obj.time_started && mouse_cell.state == kCellStateUnopened) {
                             obj.time_started = Date.now();
@@ -427,7 +509,7 @@
                 mouseState = kMouseStateNone;
             }
             if (mouse.primaryReleased && is_over_smiley()) {
-                reset();
+                reset({ enable_tracing: enable_tracing });
             }
 
             mouse.primaryReleased = false;
@@ -771,9 +853,126 @@
             }
         }
 
+        function test_has_won() {
+            // Revealing all non mine cells results in win.
+            {
+                const t = test_fixture_make();
+                const g = game_make(t.mouse);
+                g.reset({ grid: t.grid });
+                t.reveal_all(g, t.grid);
+                console.assert(g.has_won());
+            }
+        }
+
+        function test_has_lost() {
+            // Revealing a mine results in loss.
+            {
+                const t = test_fixture_make();
+                const g = game_make(t.mouse);
+                g.reset({ grid: t.grid });
+                t.reveal(g, 0, 0);
+                console.assert(g.has_lost());
+            }
+            // Chording a cell with incorrect flagged mines results in a loss.
+            {
+                const t = test_fixture_make();
+                const g = game_make(t.mouse);
+                g.reset({ grid: t.grid });
+                t.reveal(g, 0, 1);
+                t.flag(g, 0, 2);
+                t.flag(g, 1, 2);
+                console.assert(!g.has_lost());
+                t.chord(g, 0, 1);
+                console.assert(g.has_lost());
+            }
+        }
+
+        function test_has_placed_mines() {
+            // Mines are placed on first reveal.
+            {
+                const t = test_fixture_make();
+                const g = game_make(t.mouse);
+                g.reset();
+                console.assert(!g.has_placed_mines());
+                t.reveal(g, 0, 0);
+                console.assert(g.has_placed_mines());
+            }
+            // Mines are not placed on first flag.
+            {
+                const t = test_fixture_make();
+                const g = game_make(t.mouse);
+                g.reset();
+                console.assert(!g.has_placed_mines());
+                t.flag(g, 0, 0);
+                console.assert(!g.has_placed_mines());
+            }
+            // Mines are not placed after reset.
+            {
+                const t = test_fixture_make();
+                const g = game_make(t.mouse);
+                g.reset();
+                console.assert(!g.has_placed_mines());
+                t.reveal(g, 0, 0);
+                console.assert(g.has_placed_mines());
+                g.reset();
+                console.assert(!g.has_placed_mines());
+            }
+        }
+
+        function test_get_mouse_state() {
+            // Primary reveals.
+            {
+                const t = test_fixture_make();
+                const g = game_make(t.mouse);
+                g.reset({ grid: t.grid });
+                t.mouse_move(0, 1);
+                t.mouse_pressPrimary();
+                g.tick();
+                t.mouse_releasePrimary();
+                g.tick();
+                assert_states(t.grid, [
+                    "uou",
+                    "uuu",
+                    "uuu",
+                    "uuu"
+                ]);
+            }
+        }
+
+        function test_trace() {
+            {
+                const t = test_fixture_make();
+                const g = game_make(t.mouse);
+                let trace = [];
+                {
+                    g.reset({ grid: t.grid, enable_tracing: true });
+                    t.reveal(g, 0, 1);
+                    t.reveal(g, 0, 2);
+                    t.reveal(g, 1, 0);
+                    t.reveal(g, 1, 2);
+                    t.reveal(g, 2, 0);
+                    t.reveal(g, 2, 1);
+                    t.reveal(g, 3, 0);
+                    t.reveal(g, 3, 1);
+                    console.assert(!g.has_won());
+                    trace = g.get_trace();
+                }
+                const g2 = game_make(t.mouse);
+                g2.apply_trace(trace);
+                console.assert(!g2.has_won());
+                t.reveal(g2, 3, 2);
+                console.assert(g2.has_won());
+            }
+        }
+
         function test_game() {
             test_timer();
             test_flags_placed();
+            test_has_won();
+            test_has_lost();
+            test_has_placed_mines();
+            test_get_mouse_state();
+            test_trace();
         }
     }
 
@@ -811,7 +1010,7 @@
                 }
                 test_game();
                 game = game_make(gMouse);
-                game.start();
+                game.start({ enable_tracing: true });
             });
 
         };
@@ -890,6 +1089,26 @@
         for (let m = 0; m < num_mines; m++) {
             grid[positions[m].i][positions[m].j].is_mine = true;
         }
+    }
+
+    // grid_to_json returns a JSON friendly grid
+    function grid_to_json(grid) {
+        const num_rows = grid.length;
+        const num_cols = grid[0].length;
+
+        let grid_json = [];
+        for (let i = 0; i < grid.length; i++) {
+            let grid_json_row = [];
+            for (let j = 0; j < grid[i].length; j++) {
+                let grid_json_cell = {
+                    state: grid[i][j].state,
+                    is_mine: grid[i][j].is_mine
+                };
+                grid_json_row.push(grid_json_cell);
+            }
+            grid_json.push(grid_json_row);
+        }
+        return grid_json;
     }
 
     const kGridStateInProgress = 0;
@@ -1034,6 +1253,20 @@
         console.assert(grid[1][1].sw == grid[2][0]);
         console.assert(grid[1][1].s == grid[2][1]);
         console.assert(grid[1][1].se == grid[2][2]);
+    }
+
+    function test_grid_to_json() {
+        const grid = grid_make(3, 3);
+        grid[0][0].state = kCellStateFlagged;
+        const grid_json = grid_to_json(grid);
+        console.assert(grid.length == grid_json.length);
+        for (let i = 0; i < grid.length; i++) {
+            console.assert(grid[i].length == grid_json[i].length);
+            for (let j = 0; j < grid[i].length; j++) {
+                console.assert(grid[i][j].state == grid_json[i][j].state);
+                console.assert(grid[i][j].is_mine == grid_json[i][j].is_mine);
+            }
+        }
     }
 
     // ch2state maps a character to a cell state.
@@ -1252,6 +1485,7 @@
         test_chord();
         test_grid_state();
         test_grid_set_mines();
+        test_grid_to_json();
         let g = game_make();
         g.selftest();
     }
