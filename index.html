@@ -185,8 +185,6 @@
         let difficulty = "Beginner";
         let clock_x = 0;
         const doing_small_test = false;
-        let enable_tracing = false;
-        let trace = [];
         let last_mouse_state;
 
         obj.has_won = function () {
@@ -209,31 +207,8 @@
             return trace;
         }
 
-        obj.apply_trace = function (trace) {
-            console.assert(trace.length > 0, "expected trace of > 0 events, got: " + trace.length);
-            const first = trace[0];
-            console.assert(first.event == "place_mines", "expected first event to be 'place_mines', got: ", first);
-            // Recreate the grid.
-            const trace_grid = grid_make(first.grid.length, first.grid[0].length);
-            for (let i = 0; i < first.grid.length; i++) {
-                for (let j = 0; j < first.grid[i].length; j++) {
-                    trace_grid[i][j].state = first.grid[i][j].state;
-                    trace_grid[i][j].is_mine = first.grid[i][j].is_mine;
-                }
-            }
-            reset({
-                difficulty: first.difficulty,
-                grid: trace_grid,
-                enable_tracing: false
-            });
-            const mouse_old = mouse;
-            for (let i = 1; i < trace.length; i++) {
-                console.assert(trace[i].event == "mouse", "expected event to be 'mouse', got: ", trace[i]);
-                mouse = trace[i].mouse;
-                obj.tick();
-            }
-            // Restore mouse.
-            mouse = mouse_old;
+        obj.get_grid_json = function () {
+            return grid_to_json(grid);
         }
 
         // opts may contain 'difficulty' to determine board size.
@@ -312,14 +287,6 @@
                 grid = opts.grid;
                 // Assume test grid already has mines placed.
                 mines_placed = true;
-                if (enable_tracing) {
-                    trace.push({
-                        "event": "place_mines",
-                        "grid": grid_to_json(grid),
-                        "difficulty": difficulty,
-                        "mouse": Object.assign({}, mouse)
-                    });
-                }
             }
         }
 
@@ -357,16 +324,6 @@
         }
 
         obj.tick = function () {
-            if (enable_tracing && trace.length > 0) {
-                // If the mouse changes in any state aside from movement, trace it.
-                const lastMouse = trace[trace.length - 1].mouse;
-                if (mouse.buttons != lastMouse.buttons || mouse.primaryPressed != lastMouse.primaryPressed || mouse.primaryReleased != lastMouse.primaryReleased || mouse.secondaryPressed != lastMouse.secondaryPressed || mouse.secondaryReleased != lastMouse.secondaryReleased) {
-                    trace.push({
-                        "event": "mouse",
-                        "mouse": Object.assign({}, mouse)
-                    });
-                }
-            }
             const mouse_coords = get_cell_coords(mouse.offsetX, mouse.offsetY);
             const mouse_cell = mouse_coords ? grid[mouse_coords.i][mouse_coords.j] : null;
             const cord_cells = [];
@@ -440,14 +397,6 @@
                         if (!mines_placed) {
                             grid_set_mines(grid, mouse_coords.i, mouse_coords.j, mine_count);
                             mines_placed = true;
-                            if (enable_tracing) {
-                                trace.push({
-                                    "event": "place_mines",
-                                    "grid": grid_to_json(grid),
-                                    "difficulty": difficulty,
-                                    "mouse": Object.assign({}, mouse)
-                                });
-                            }
                         }
                         if (!obj.time_started && mouse_cell.state == kCellStateUnopened) {
                             obj.time_started = Date.now();
@@ -509,7 +458,7 @@
                 mouseState = kMouseStateNone;
             }
             if (mouse.primaryReleased && is_over_smiley()) {
-                reset({ enable_tracing: enable_tracing });
+                reset();
             }
 
             mouse.primaryReleased = false;
@@ -939,29 +888,15 @@
             }
         }
 
-        function test_trace() {
+        function test_get_grid_json() {
             {
                 const t = test_fixture_make();
                 const g = game_make(t.mouse);
-                let trace = [];
-                {
-                    g.reset({ grid: t.grid, enable_tracing: true });
-                    t.reveal(g, 0, 1);
-                    t.reveal(g, 0, 2);
-                    t.reveal(g, 1, 0);
-                    t.reveal(g, 1, 2);
-                    t.reveal(g, 2, 0);
-                    t.reveal(g, 2, 1);
-                    t.reveal(g, 3, 0);
-                    t.reveal(g, 3, 1);
-                    console.assert(!g.has_won());
-                    trace = g.get_trace();
-                }
-                const g2 = game_make(t.mouse);
-                g2.apply_trace(trace);
-                console.assert(!g2.has_won());
-                t.reveal(g2, 3, 2);
-                console.assert(g2.has_won());
+
+                g.reset({ grid: t.grid, enable_tracing: true });
+                t.reveal(g, 0, 1);
+                const grid_json = g.get_grid_json();
+                console.assert(grid_json[0][1].state == kCellStateOpened);
             }
         }
 
@@ -972,7 +907,7 @@
             test_has_lost();
             test_has_placed_mines();
             test_get_mouse_state();
-            test_trace();
+            test_get_grid_json();
         }
     }
 
