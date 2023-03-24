@@ -157,19 +157,14 @@
     const kGridLeft = 12;
     const kCellSize = 16;
     const game_make = function (mouse) {
-        const obj = {
-            time_started: null,
-            time_stopped: null,
-            flags_placed: 0
-        };
+        const obj = {};
         const cnv = document.querySelector("canvas");
         const ctx = cnv.getContext("2d");
         const grid_top = 55;
         const grid_left = 12;
         let grid;
-
         const kMouseStateNone = 0;
-        const kMouseStateWillCord = 1; // When both mouse buttons have been pressed, and neither has been released.
+        const kMouseStateWillChord = 1; // When both mouse buttons have been pressed, and neither has been released.
         const kMouseStateWillReveal = 2; // When only the primary mouse button has been pressed.
         let mouseState = kMouseStateNone;
         let losing_mines = [];
@@ -185,7 +180,21 @@
         let difficulty = "Beginner";
         let clock_x = 0;
         const doing_small_test = false;
-        let last_mouse_state;
+        let time_started;
+        let time_stopped;
+        let flags_placed;
+
+        obj.get_time_started = function () {
+            return time_started;
+        }
+
+        obj.get_time_stopped = function () {
+            return time_stopped;
+        }
+
+        obj.get_flags_placed = function () {
+            return flags_placed;
+        }
 
         obj.has_won = function () {
             return won;
@@ -201,10 +210,6 @@
 
         obj.get_mouse_state = function () {
             return mouseState;
-        }
-
-        obj.get_trace = function () {
-            return trace;
         }
 
         obj.get_grid_json = function () {
@@ -272,15 +277,9 @@
             mouseState = kMouseStateNone;
             losing_mines = [];
             won = false;
-            obj.flags_placed = 0;
-            obj.time_started = null; // Unset.
-            obj.time_stopped = null; // Unset.
-
-            trace = [];
-            enable_tracing = false;
-            if (opts && 'enable_tracing' in opts && opts.enable_tracing) {
-                enable_tracing = opts.enable_tracing;
-            }
+            flags_placed = 0;
+            time_started = null; // Unset.
+            time_stopped = null; // Unset.
 
             if (opts && 'grid' in opts) {
                 // Set fixed grid for testing.
@@ -300,11 +299,11 @@
         }
 
         // get_cell_coords returns the coordinates of a cell from a mouse position
-        function get_cell_coords(mouse_x, mouse_y) {
+        obj.get_cell_coords = function (mouse_x, mouse_y) {
             mouse_y -= grid_top;
             mouse_x -= grid_left;
-            const i = Math.floor(mouse_y / 16);
-            const j = Math.floor(mouse_x / 16);
+            const i = Math.floor(mouse_y / kCellSize);
+            const j = Math.floor(mouse_x / kCellSize);
             if (i < 0 || i >= grid.length) {
                 return null;
             }
@@ -324,14 +323,14 @@
         }
 
         obj.tick = function () {
-            const mouse_coords = get_cell_coords(mouse.offsetX, mouse.offsetY);
+            const mouse_coords = obj.get_cell_coords(mouse.offsetX, mouse.offsetY);
             const mouse_cell = mouse_coords ? grid[mouse_coords.i][mouse_coords.j] : null;
-            const cord_cells = [];
+            const chord_cells = [];
             if (mouse_coords) {
                 for (let ip = mouse_coords.i - 1; ip <= mouse_coords.i + 1; ip++) {
                     for (let jp = mouse_coords.j - 1; jp <= mouse_coords.j + 1; jp++) {
                         if (ip >= 0 && ip < grid.length && jp >= 0 && jp < grid[ip].length) {
-                            cord_cells.push(grid[ip][jp]);
+                            chord_cells.push(grid[ip][jp]);
                         }
                     }
                 }
@@ -339,30 +338,30 @@
 
             // Handle events.
             if (mouse.primaryPressed && mouse.secondaryPressed) {
-                mouseState = kMouseStateWillCord;
+                mouseState = kMouseStateWillChord;
             }
             else if (mouse.primaryPressed) {
                 if (mouse.buttons & 2) {
-                    mouseState = kMouseStateWillCord;
+                    mouseState = kMouseStateWillChord;
                 } else {
                     mouseState = kMouseStateWillReveal;
                 }
             }
             else if (mouse.secondaryPressed) {
                 if (mouse.buttons & 1) {
-                    mouseState = kMouseStateWillCord;
+                    mouseState = kMouseStateWillChord;
                 } else {
                     // Toggle flag.
                     if (mouse_cell && !won && losing_mines.length == 0) {
                         if (mouse_cell.state == kCellStateFlagged) {
                             mouse_cell.state = kCellStateUnopened;
-                            obj.flags_placed--;
+                            flags_placed--;
                         } else if (mouse_cell.state == kCellStateUnopened) {
                             mouse_cell.state = kCellStateFlagged;
-                            obj.flags_placed++;
+                            flags_placed++;
                         } else if (mouse_cell.state == kCellStateOpened) {
                             if (config.secondary_chording == "only_secondary") {
-                                mouseState = kMouseStateWillCord;
+                                mouseState = kMouseStateWillChord;
                             }
                         }
                     }
@@ -370,49 +369,27 @@
             }
 
             if (mouse.primaryReleased) {
-                if (mouseState == kMouseStateWillCord) {
-                    if (mouse_cell) {
-                        let res = cell_chord(mouse_cell);
-                        if (!res.ok) {
-                            losing_mines = res.losing_mines;
-                            obj.time_stopped = Date.now();
-                        } else if (grid_state(grid) == kGridStateWon) {
-                            won = true;
-                            obj.time_stopped = Date.now();
-                            // Flag any unflagged mines so the remaining mine count is correct.
-                            for (let i = 0; i < grid.length; i++) {
-                                for (let j = 0; j < grid[i].length; j++) {
-                                    if (grid[i][j].is_mine && grid[i][j].state == kCellStateUnopened) {
-                                        obj.flags_placed++;
-                                        grid[i][j].state = kCellStateFlagged;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    mouseState = kMouseStateNone;
-                }
-                else if (mouseState == kMouseStateWillReveal) {
+                if (mouseState == kMouseStateWillReveal) {
                     if (mouse_cell) {
                         if (!mines_placed) {
                             grid_set_mines(grid, mouse_coords.i, mouse_coords.j, mine_count);
                             mines_placed = true;
                         }
-                        if (!obj.time_started && mouse_cell.state == kCellStateUnopened) {
-                            obj.time_started = Date.now();
+                        if (!time_started && mouse_cell.state == kCellStateUnopened) {
+                            time_started = Date.now();
                         }
                         let ok = cell_reveal(mouse_cell);
                         if (!ok) {
                             losing_mines = [mouse_cell];
-                            obj.time_stopped = Date.now();
+                            time_stopped = Date.now();
                         } else if (grid_state(grid) == kGridStateWon) {
                             won = true;
-                            obj.time_stopped = Date.now();
+                            time_stopped = Date.now();
                             // Flag any unflagged mines so the remaining mine count is correct.
                             for (let i = 0; i < grid.length; i++) {
                                 for (let j = 0; j < grid[i].length; j++) {
                                     if (grid[i][j].is_mine && grid[i][j].state == kCellStateUnopened) {
-                                        obj.flags_placed++;
+                                        flags_placed++;
                                         grid[i][j].state = kCellStateFlagged;
                                     }
                                 }
@@ -423,16 +400,25 @@
                 }
             }
 
-            if (mouse.secondaryReleased) {
-                if (mouseState == kMouseStateWillCord) {
+            if (mouse.primaryReleased || mouse.secondaryReleased) {
+                if (mouseState == kMouseStateWillChord) {
                     if (mouse_cell) {
                         let res = cell_chord(mouse_cell);
                         if (!res.ok) {
                             losing_mines = res.losing_mines;
-                            obj.time_stopped = Date.now();
+                            time_stopped = Date.now();
                         } else if (grid_state(grid) == kGridStateWon) {
                             won = true;
-                            obj.time_stopped = Date.now();
+                            time_stopped = Date.now();
+                            // Flag any unflagged mines so the remaining mine count is correct.
+                            for (let i = 0; i < grid.length; i++) {
+                                for (let j = 0; j < grid[i].length; j++) {
+                                    if (grid[i][j].is_mine && grid[i][j].state == kCellStateUnopened) {
+                                        flags_placed++;
+                                        grid[i][j].state = kCellStateFlagged;
+                                    }
+                                }
+                            }
                         }
                     }
                     mouseState = kMouseStateNone;
@@ -493,10 +479,9 @@
                             }
                         }
                     } else if (cell.state == kCellStateUnopened) {
-                        let in_cord_cells = in_cell_list(cord_cells, cell);
                         if (mouseState == kMouseStateWillReveal && mouse_cell && mouse_cell == cell) {
                             sprite = sprite_map["cell_pressed"];
-                        } else if (mouseState == kMouseStateWillCord && in_cord_cells) {
+                        } else if (mouseState == kMouseStateWillChord && in_cell_list(chord_cells, cell)) {
                             sprite = sprite_map["cell_pressed"];
                         } else {
                             sprite = sprite_map["cell"];
@@ -518,7 +503,7 @@
                         }
                     }
 
-                    ctx.drawImage(sprite, grid_left + 16 * j, grid_top + 16 * i);
+                    ctx.drawImage(sprite, grid_left + kCellSize * j, grid_top + kCellSize * i);
                 }
             }
 
@@ -527,7 +512,7 @@
                 let smileySprite = sprite_map["smiley"];
                 if (smileyPressed) {
                     smileySprite = sprite_map["smiley_pressed"];
-                } else if (mouseState == kMouseStateWillCord || mouseState == kMouseStateWillReveal) {
+                } else if (mouseState == kMouseStateWillChord || mouseState == kMouseStateWillReveal) {
                     smileySprite = sprite_map["smiley_o"];
                 }
                 else if (losing_mines.length > 0) {
@@ -541,7 +526,7 @@
 
             // Render remaining mines count.
             {
-                let remaining_mines = mine_count - obj.flags_placed;
+                let remaining_mines = mine_count - flags_placed;
                 remaining_mines %= 1000; // Only display three digits.
                 let digits = ["d0", "d0", "d0"];
                 if (remaining_mines < 0) {
@@ -568,12 +553,12 @@
             // Render clock.
             {
                 let seconds = 0;
-                if (obj.time_started) {
+                if (time_started) {
                     let diff_ms;
-                    if (obj.time_stopped) {
-                        diff_ms = obj.time_stopped - obj.time_started;
+                    if (time_stopped) {
+                        diff_ms = time_stopped - time_started;
                     } else {
-                        diff_ms = Date.now() - obj.time_started;
+                        diff_ms = Date.now() - time_started;
                     }
                     seconds = Math.floor(diff_ms / 1000);
                 }
@@ -602,25 +587,6 @@
         function loop() {
             obj.tick();
             window.requestAnimationFrame(loop);
-        }
-
-        function test_get_cell() {
-            grid = grid_make(2, 2);
-            function eq(a, b) {
-                if ((a === null) && (b === null)) return true;
-                if ((a === null) != (b === null)) return false;
-                return a.i == b.i && a.j == b.j;
-            }
-            console.assert(eq(get_cell_coords(grid_left + 0, grid_top + 0), { i: 0, j: 0 }));
-            console.assert(eq(get_cell_coords(grid_left + 0, grid_top + 15), { i: 0, j: 0 }));
-            console.assert(eq(get_cell_coords(grid_left + 0, grid_top + 16), { i: 1, j: 0 }));
-            console.assert(eq(get_cell_coords(grid_left + 15, grid_top + 0), { i: 0, j: 0 }));
-            console.assert(eq(get_cell_coords(grid_left + 16, grid_top + 0), { i: 0, j: 1 }));
-            console.assert(eq(get_cell_coords(grid_left + 16, grid_top + 0), { i: 0, j: 1 }));
-            console.assert(eq(get_cell_coords(grid_left + 32, grid_top + 0), null));
-        }
-        obj.selftest = function () {
-            test_get_cell();
         }
 
         return obj;
@@ -717,7 +683,7 @@
                 t.mouse_move(0, 1);
                 t.mouse_pressSecondary();
                 g.tick();
-                console.assert(!g.time_started);
+                console.assert(!g.get_time_started());
             }
             // Revealing starts the timer.
             {
@@ -729,7 +695,7 @@
                 g.tick();
                 t.mouse_releasePrimary();
                 g.tick();
-                console.assert(g.time_started);
+                console.assert(g.get_time_started());
             }
             // Clicking off grid does not start the timer.
             {
@@ -741,23 +707,23 @@
                 g.tick();
                 t.mouse_releasePrimary();
                 g.tick();
-                console.assert(!g.time_started);
+                console.assert(!g.get_time_started());
             }
             // Winning stops the timer.
             {
                 const t = test_fixture_make();
                 const g = game_make(t.mouse);
                 g.reset({ grid: t.grid });
-                console.assert(!g.time_stopped);
+                console.assert(!g.get_time_stopped());
                 t.reveal_all(g, t.grid);
-                console.assert(g.time_stopped);
+                console.assert(g.get_time_stopped());
             }
             // Winning by chording stops the timer.
             {
                 const t = test_fixture_make();
                 const g = game_make(t.mouse);
                 g.reset({ grid: t.grid });
-                console.assert(!g.time_stopped);
+                console.assert(!g.get_time_stopped());
                 t.flag(g, 0, 0);
                 t.flag(g, 1, 1);
                 t.flag(g, 2, 2);
@@ -765,17 +731,17 @@
                 t.chord(g, 0, 1);
                 t.chord(g, 1, 0);
                 t.chord(g, 2, 1);
-                console.assert(g.time_stopped);
+                console.assert(g.get_time_stopped());
             }
             // Losing stops the timer.
             {
                 const t = test_fixture_make();
                 const g = game_make(t.mouse);
                 g.reset({ grid: t.grid });
-                console.assert(!g.time_stopped);
+                console.assert(!g.get_time_stopped());
                 t.reveal(g, 0, 0);
                 g.tick();
-                console.assert(g.time_stopped);
+                console.assert(g.get_time_stopped());
             }
         }
 
@@ -785,20 +751,20 @@
                 const t = test_fixture_make();
                 const g = game_make(t.mouse);
                 g.reset({ grid: t.grid });
-                console.assert(g.flags_placed == 0);
+                console.assert(g.get_flags_placed() == 0);
                 t.flag(g, 0, 0);
-                console.assert(g.flags_placed == 1);
+                console.assert(g.get_flags_placed() == 1);
             }
             // flags_placed is set to 0 on reset.
             {
                 const t = test_fixture_make();
                 const g = game_make(t.mouse);
                 g.reset({ grid: t.grid });
-                console.assert(g.flags_placed == 0);
+                console.assert(g.get_flags_placed() == 0);
                 t.flag(g, 0, 0);
-                console.assert(g.flags_placed == 1);
+                console.assert(g.get_flags_placed() == 1);
                 g.reset();
-                console.assert(g.flags_placed == 0);
+                console.assert(g.get_flags_placed() == 0);
             }
         }
 
@@ -893,11 +859,31 @@
                 const t = test_fixture_make();
                 const g = game_make(t.mouse);
 
-                g.reset({ grid: t.grid, enable_tracing: true });
+                g.reset({ grid: t.grid });
                 t.reveal(g, 0, 1);
                 const grid_json = g.get_grid_json();
                 console.assert(grid_json[0][1].state == kCellStateOpened);
             }
+        }
+
+        function test_get_cell() {
+            const t = test_fixture_make();
+            const g = game_make(t.mouse);
+            const grid_top = 55;
+            const grid_left = 12;
+            g.reset({ grid: t.grid });
+            function eq(a, b) {
+                if ((a === null) && (b === null)) return true;
+                if ((a === null) != (b === null)) return false;
+                return a.i == b.i && a.j == b.j;
+            }
+            console.assert(eq(g.get_cell_coords(grid_left + 0, grid_top + 0), { i: 0, j: 0 }));
+            console.assert(eq(g.get_cell_coords(grid_left + 0, grid_top + 15), { i: 0, j: 0 }));
+            console.assert(eq(g.get_cell_coords(grid_left + 0, grid_top + 16), { i: 1, j: 0 }));
+            console.assert(eq(g.get_cell_coords(grid_left + 15, grid_top + 0), { i: 0, j: 0 }));
+            console.assert(eq(g.get_cell_coords(grid_left + 16, grid_top + 0), { i: 0, j: 1 }));
+            console.assert(eq(g.get_cell_coords(grid_left + 16, grid_top + 0), { i: 0, j: 1 }));
+            console.assert(eq(g.get_cell_coords(grid_left + 48, grid_top + 0), null));
         }
 
         function test_game() {
@@ -908,6 +894,7 @@
             test_has_placed_mines();
             test_get_mouse_state();
             test_get_grid_json();
+            test_get_cell();
         }
     }
 
@@ -945,7 +932,7 @@
                 }
                 test_game();
                 game = game_make(gMouse);
-                game.start({ enable_tracing: true });
+                game.start();
             });
 
         };
@@ -1431,8 +1418,6 @@
         test_grid_state();
         test_grid_set_mines();
         test_grid_to_json();
-        let g = game_make();
-        g.selftest();
     }
 
     run_tests();
