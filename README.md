@@ -1,6 +1,6 @@
 # Minesweeper
 
-Minesweeper in the browser.
+Minesweeper in the browser. Play here: https://kevinalbs.com/minesweeper/
 
 ![Minesweeper Gameplay](./img/minesweeper-gameplay.gif)
 
