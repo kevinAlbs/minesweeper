@@ -238,7 +238,7 @@
                 grid[2][2].is_mine = true;
                 mine_count = 3;
                 mines_placed = true;
-                cnv.style.backgroundImage = "url('minesweeper-expert.png')";
+                cnv.style.backgroundImage = "url('img/minesweeper-expert.png')";
                 cnv.setAttribute("width", "504");
                 cnv.setAttribute("height", "323");
                 smiley.x = 240;
@@ -248,7 +248,7 @@
                 grid = grid_make(16, 30);
                 mine_count = 99;
                 mines_placed = false;
-                cnv.style.backgroundImage = "url('minesweeper-expert.png')";
+                cnv.style.backgroundImage = "url('img/minesweeper-expert.png')";
                 cnv.setAttribute("width", "504");
                 cnv.setAttribute("height", "323");
                 smiley.x = 240;
@@ -257,7 +257,7 @@
                 grid = grid_make(16, 16);
                 mine_count = 40;
                 mines_placed = false;
-                cnv.style.backgroundImage = "url('minesweeper-intermediate.png')";
+                cnv.style.backgroundImage = "url('img/minesweeper-intermediate.png')";
                 cnv.setAttribute("width", "280");
                 cnv.setAttribute("height", "323");
                 smiley.x = 128;
@@ -266,7 +266,7 @@
                 grid = grid_make(8, 8);
                 mine_count = 10;
                 mines_placed = false;
-                cnv.style.backgroundImage = "url('minesweeper-beginner.png')";
+                cnv.style.backgroundImage = "url('img/minesweeper-beginner.png')";
                 cnv.setAttribute("width", "152");
                 cnv.setAttribute("height", "195");
                 smiley.x = 64;
@@ -943,7 +943,7 @@
         }
 
         // Load the sprite sheet from an image file
-        image.src = "spritesheet.png";
+        image.src = "img/spritesheet.png";
     }());
 
     // Begin grid logic. Does not interact with UI.

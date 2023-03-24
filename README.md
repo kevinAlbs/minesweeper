@@ -1,8 +1,15 @@
+# Minesweeper
+
+Minesweeper in the browser.
+
+![Minesweeper Gameplay](./img/minesweeper-gameplay.gif)
+
+
 # Reporting a bug
 
 When reporting a bug, please include the JSON form of the grid used. This may help to reproduce the issue.
 Run the following in Developer Tools:
-```
+```js
 // Copy the grid JSON to the clipboard
 copy (game.get_grid_json())
 ```
