@@ -3,6 +3,15 @@
 <head>
     <title>Minesweeper</title>
     <style type="text/css">
+        body.darkmode {
+            background: black;
+        }
+
+        body.darkmode a,
+        body.darkmode small {
+            color: white;
+        }
+
         * {
             padding: 0;
             margin: 0;
@@ -27,6 +36,10 @@
             padding: 10px;
             position: relative;
             padding: 20px 10px 10px 10px;
+        }
+
+        #config a {
+            color: #000;
         }
 
         #config_close {
@@ -54,6 +67,12 @@
         <p><a href="#" id="config_open">Open Settings</a></p>
         <div id="config">
             <a href="#" id="config_close">Close</a>
+            <h1>Use darkmode?</h1>
+            <div class="options">
+                <input type="radio" name="darkmode" value="no" checked="checked" id="darkmode_no"><label
+                    for="darkmode_no">No</label><br />
+                <input type="radio" name="darkmode" value="yes" id="darkmode_yes"><label for="darkmode_yes">Yes</label>
+            </div>
             <h1>Use secondary mouse click for chording?</h1>
             <div class="options">
                 <input type="radio" name="secondary_chording" value="only_secondary" checked="checked"
@@ -80,7 +99,8 @@
 <script>
     const config = {
         secondary_chording: "only_secondary",
-        difficulty: "Expert"
+        difficulty: "Expert",
+        darkmode: "No"
     };
     // Set up config listeners.
     {
@@ -101,7 +121,17 @@
                     game.reset();
                 }
             })
-        })
+        });
+        document.querySelectorAll("[name=darkmode]").forEach((el) => {
+            el.addEventListener("change", (e) => {
+                config.darkmode = e.target.value;
+                if (config.darkmode === "yes") {
+                    document.querySelector("body").className = "darkmode";
+                } else {
+                    document.querySelector("body").className = "";
+                }
+            })
+        });
         document.querySelector("#config_open").addEventListener("click", function (e) {
             e.preventDefault();
             document.querySelector("#config").style.display = "block";
