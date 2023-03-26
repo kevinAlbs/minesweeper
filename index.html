@@ -4,7 +4,7 @@
     <title>Minesweeper</title>
     <style type="text/css">
         body.darkmode {
-            background: black;
+            background: #222;
         }
 
         body.darkmode a,
@@ -35,17 +35,11 @@
             display: none;
             padding: 10px;
             position: relative;
-            padding: 20px 10px 10px 10px;
+            padding: 10px 10px 10px 10px;
         }
 
         #config a {
             color: #000;
-        }
-
-        #config_close {
-            position: absolute;
-            right: 10px;
-            top: 5px;
         }
 
         #config .options {
@@ -66,16 +60,16 @@
         <canvas width="504" height="323"></canvas>
         <p><a href="#" id="config_open">Open Settings</a></p>
         <div id="config">
-            <a href="#" id="config_close">Close</a>
+            <a href="#" id="config_close">Close Settings</a><br />
             <h1>Use darkmode?</h1>
             <div class="options">
-                <input type="radio" name="darkmode" value="no" checked="checked" id="darkmode_no"><label
+                <input type="radio" name="darkmode" value="no" id="darkmode_no"><label
                     for="darkmode_no">No</label><br />
                 <input type="radio" name="darkmode" value="yes" id="darkmode_yes"><label for="darkmode_yes">Yes</label>
             </div>
             <h1>Use secondary mouse click for chording?</h1>
             <div class="options">
-                <input type="radio" name="secondary_chording" value="only_secondary" checked="checked"
+                <input type="radio" name="secondary_chording" value="only_secondary"
                     id="secondary_chording_only_secondary"><label for="secondary_chording_only_secondary">Only
                     secondary
                     (convenient for track pads)</label><br />
@@ -89,7 +83,7 @@
                     for="difficulty_Beginner">Beginner</label><br />
                 <input type="radio" name="difficulty" value="Intermediate" id="difficulty_Intermediate"><label
                     for="difficulty_Intermediate">Intermediate</label><br />
-                <input type="radio" name="difficulty" value="Expert" id="difficulty_Expert" checked="checked"><label
+                <input type="radio" name="difficulty" value="Expert" id="difficulty_Expert"><label
                     for="difficulty_Expert">Expert</label><br />
             </div>
         </div>
@@ -102,6 +96,20 @@
         difficulty: "Expert",
         darkmode: "No"
     };
+    // If local storage has saved config, apply it.
+    config.secondary_chording = localStorage.getItem("secondary_chording") || config.secondary_chording;
+    config.difficulty = localStorage.getItem("difficulty") || config.difficulty;
+    config.darkmode = localStorage.getItem("darkmode") || config.darkmode;
+    // apply initial setting of darkmode.
+    function apply_darkmode() {
+        if (config.darkmode === "yes") {
+            document.querySelector("body").className = "darkmode";
+        } else {
+            document.querySelector("body").className = "";
+        }
+    }
+    apply_darkmode();
+
     // Set up config listeners.
     {
         document.querySelectorAll("[name=secondary_chording]").forEach((el) => {
@@ -110,27 +118,35 @@
                 for (let i = 0; i < opts.length; i++) {
                     if (opts[i].checked) {
                         config.secondary_chording = opts[i].value;
+                        localStorage.setItem("secondary_chording", config.secondary_chording);
                     }
                 }
             });
+            if (el.value == config.secondary_chording) {
+                el.checked = true;
+            }
         });
         document.querySelectorAll("[name=difficulty]").forEach((el) => {
             el.addEventListener("change", (e) => {
                 config.difficulty = e.target.value;
+                localStorage.setItem("difficulty", config.difficulty);
                 if (game) {
                     game.reset();
                 }
-            })
+            });
+            if (el.value == config.difficulty) {
+                el.checked = true;
+            }
         });
         document.querySelectorAll("[name=darkmode]").forEach((el) => {
             el.addEventListener("change", (e) => {
                 config.darkmode = e.target.value;
-                if (config.darkmode === "yes") {
-                    document.querySelector("body").className = "darkmode";
-                } else {
-                    document.querySelector("body").className = "";
-                }
-            })
+                localStorage.setItem("darkmode", config.darkmode);
+                apply_darkmode();
+            });
+            if (el.value == config.darkmode) {
+                el.checked = true;
+            }
         });
         document.querySelector("#config_open").addEventListener("click", function (e) {
             e.preventDefault();
