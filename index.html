@@ -550,8 +550,7 @@
                             sprite = sprite_map["mine_x"];
                         }
                     }
-
-                    ctx.drawImage(sprite, grid_left + kCellSize * j, grid_top + kCellSize * i);
+                    ctx.drawImage(sprite.image, sprite.offset_x, sprite.offset_y, sprite.width, sprite.height, grid_left + kCellSize * j, grid_top + kCellSize * i, sprite.width, sprite.height);
                 }
             }
 
@@ -569,7 +568,7 @@
                 else if (won) {
                     smileySprite = sprite_map["smiley_glasses"];
                 }
-                ctx.drawImage(smileySprite, smiley.x, smiley.y);
+                ctx.drawImage(smileySprite.image, smileySprite.offset_x, smileySprite.offset_y, smileySprite.width, smileySprite.height, smiley.x, smiley.y, smileySprite.width, smileySprite.height);
             }
 
             // Render remaining mines count.
@@ -594,7 +593,8 @@
                     digits[0] = "d" + (remaining_mines % 10);
                 }
                 for (let i = 0; i < digits.length; i++) {
-                    ctx.drawImage(sprite_map[digits[i]], 17 + i * 13, 16);
+                    const sprite = sprite_map[digits[i]];
+                    ctx.drawImage(sprite.image, sprite.offset_x, sprite.offset_y, sprite.width, sprite.height, 17 + i * 13, 16, sprite.width, sprite.height);
                 }
             }
 
@@ -627,7 +627,8 @@
                     digits[0] = "d" + (seconds % 10);
                 }
                 for (let i = 0; i < digits.length; i++) {
-                    ctx.drawImage(sprite_map[digits[i]], clock_x + i * 13, 16);
+                    const sprite = sprite_map[digits[i]];
+                    ctx.drawImage(sprite.image, sprite.offset_x, sprite.offset_y, sprite.width, sprite.height, clock_x + i * 13, 16, sprite.width, sprite.height);
                 }
             }
         }
@@ -950,39 +951,41 @@
 
     // Begin loading sprite map.
     const sprite_map = {};
+    function createSprite(image, offset_x, offset_y, width, height) {
+        return {
+            offset_x: offset_x,
+            offset_y: offset_y,
+            width: width,
+            height: height,
+            image: image
+        };
+    }
     (function () {
         const image = new Image();
         // Wait for the sprite sheet to load
         image.onload = () => {
-            const ps = [];
+            const sprite_names = [
+                "cell", "cell_pressed", "flag", "question", "question_pressed", "mine", "mine_red", "mine_x", "1", "2", "3", "4", "5", "6", "7", "8", "smiley", "smiley_pressed", "smiley_o", "smiley_glasses", "smiley_dead", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d9", "d0", "ddash", "dempty"
+            ];
+            let sprite_names_i = 0;
             // Cut two rows of 16x16 squares.
             for (let i = 0; i < 2; i++) {
                 for (let j = 0; j < 8; j++) {
-                    ps.push(createImageBitmap(image, 17 * j, 49 + 17 * i, 16, 16));
+                    sprite_map[sprite_names[sprite_names_i++]] = createSprite(image, 17 * j, 49 + 17 * i, 16, 16);
                 }
             }
             // Cut row of smileys.
             for (let i = 0; i < 5; i++) {
-                ps.push(createImageBitmap(image, 25 * i, 24, 24, 24));
+                sprite_map[sprite_names[sprite_names_i++]] = createSprite(image, 25 * i, 24, 24, 24);
             }
             // Cut row of digits.
             for (let i = 0; i < 12; i++) {
-                ps.push(createImageBitmap(image, 14 * i, 0, 13, 23));
+                sprite_map[sprite_names[sprite_names_i++]] = createSprite(image, 14 * i, 0, 13, 23);
             }
-            Promise.all(ps).then((sprites) => {
-                const sprite_names = [
-                    "cell", "cell_pressed", "flag", "question", "question_pressed", "mine", "mine_red", "mine_x", "1", "2", "3", "4", "5", "6", "7", "8", "smiley", "smiley_pressed", "smiley_o", "smiley_glasses", "smiley_dead", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d9", "d0", "ddash", "dempty"
-                ];
-                // Draw each sprite onto the canvas
-                console.assert(sprite_names.length == sprites.length);
-                for (let i = 0; i < sprite_names.length; i++) {
-                    sprite_map[sprite_names[i]] = sprites[i];
-                }
-                test_game();
-                game = game_make(gMouse);
-                game.start();
-            });
 
+            test_game();
+            game = game_make(gMouse);
+            game.start();
         };
 
         image.onerror = () => {
