@@ -1,0 +1,5 @@
+secrets.py
+leaderboard.db
+leaderboard.test.db
+.venv
+__pycache__
