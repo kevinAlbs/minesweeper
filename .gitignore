@@ -1,5 +1,6 @@
 secrets.py
 leaderboard.db
-leaderboard.test.db
+test.db
 .venv
 __pycache__
+server_logs.txt
