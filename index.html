@@ -270,6 +270,8 @@
         let time_started;
         let time_stopped;
         let flags_placed;
+        // `win_callback` is called exactly once when `won` transitions from `false` to `true`.
+        let win_callback = null;
 
         obj.get_time_started = function () {
             return time_started;
@@ -307,6 +309,10 @@
         // opts may contain 'grid' to override the grid.
         function reset(opts) {
             difficulty = config.difficulty;
+
+            if (opts && "win_callback" in opts) {
+                win_callback = opts.win_callback;
+            }
 
             if (opts && "difficulty" in opts) {
                 difficulty = opts.difficulty;
@@ -472,6 +478,9 @@
                         } else if (grid_state(grid) == kGridStateWon) {
                             won = true;
                             time_stopped = Date.now();
+                            if (win_callback !== null) {
+                                win_callback();
+                            }
                             // Flag any unflagged mines so the remaining mine count is correct.
                             for (let i = 0; i < grid.length; i++) {
                                 for (let j = 0; j < grid[i].length; j++) {
@@ -497,6 +506,9 @@
                         } else if (grid_state(grid) == kGridStateWon) {
                             won = true;
                             time_stopped = Date.now();
+                            if (null !== win_callback) {
+                                win_callback();
+                            }
                             // Flag any unflagged mines so the remaining mine count is correct.
                             for (let i = 0; i < grid.length; i++) {
                                 for (let j = 0; j < grid[i].length; j++) {
@@ -833,6 +845,20 @@
             }
         }
 
+        function test_win_calls_callback() {
+            const t = test_fixture_make();
+            const g = game_make(t.mouse);
+            let num_calls = 0;
+            g.reset({
+                grid: t.grid, win_callback: function () {
+                    num_calls += 1;
+                }
+            });
+            console.assert(num_calls == 0);
+            t.reveal_all(g, t.grid);
+            console.assert(num_calls == 1);
+        }
+
         function test_flags_placed() {
             // flags_placed is incremented on flag placement.
             {
@@ -976,6 +1002,7 @@
 
         function test_game() {
             test_timer();
+            test_win_calls_callback();
             test_flags_placed();
             test_has_won();
             test_has_lost();
