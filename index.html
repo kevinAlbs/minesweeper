@@ -267,6 +267,7 @@
         let difficulty = "Beginner";
         let clock_x = 0;
         const doing_small_test = false;
+        const test_with_one_mine = false;
         let time_started;
         let time_stopped;
         let flags_placed;
@@ -373,7 +374,10 @@
             flags_placed = 0;
             time_started = null; // Unset.
             time_stopped = null; // Unset.
-
+            if (test_with_one_mine) {
+                mine_count = 1;
+            }
+            
             if (opts && 'grid' in opts) {
                 // Set fixed grid for testing.
                 grid = opts.grid;
