@@ -359,6 +359,14 @@
             document.querySelector("#best_times").style.display = "none";
             return false;
         });
+        document.querySelector("#best_times_clear").addEventListener("click", function (e) {
+            e.preventDefault();
+            let resp = confirm("Are you sure you want to clear personal best times? This cannot be undone");
+            if (!resp) {
+                return;
+            }
+            best_times.clear_local();
+        });
     }
 
     // gMouse is the global mouse object.
@@ -434,6 +442,10 @@
         let flags_placed;
         // `win_callback` is called exactly once when `won` transitions from `false` to `true`.
         let win_callback = null;
+
+        obj.get_difficulty = function () {
+            return difficulty;
+        }
 
         obj.get_time_started = function () {
             return time_started;
@@ -816,20 +828,7 @@
 
             // Render clock.
             {
-                let seconds = 0;
-                if (time_started) {
-                    let diff_ms;
-                    if (time_stopped) {
-                        diff_ms = time_stopped - time_started;
-                    } else {
-                        diff_ms = Date.now() - time_started;
-                    }
-                    seconds = Math.floor(diff_ms / 1000);
-                }
-                if (seconds > 999) {
-                    seconds = 999;
-                }
-
+                let seconds = obj.get_seconds();
                 let digits = ["d0", "d0", "d0"];
                 if (seconds > 0) {
                     digits[2] = "d" + (seconds % 10);
@@ -847,6 +846,23 @@
                     ctx.drawImage(sprite.image, sprite.offset_x, sprite.offset_y, sprite.width, sprite.height, clock_x + i * 13, 16, sprite.width, sprite.height);
                 }
             }
+        }
+
+        obj.get_seconds = function () {
+            let seconds = 0;
+            if (time_started) {
+                let diff_ms;
+                if (time_stopped) {
+                    diff_ms = time_stopped - time_started;
+                } else {
+                    diff_ms = Date.now() - time_started;
+                }
+                seconds = Math.floor(diff_ms / 1000);
+            }
+            if (seconds > 999) {
+                seconds = 999;
+            }
+            return seconds;
         }
 
         function loop() {
@@ -1216,7 +1232,11 @@
 
             test_game();
             game = game_make(gMouse);
-            game.start();
+            game.start({
+                win_callback : function () {
+                    best_times.try_saving_new_time(game.get_difficulty(), game.get_seconds());
+                }
+            });
         };
 
         image.onerror = () => {
