@@ -6,6 +6,8 @@ import typing
 import dataclasses
 from flask import json
 from werkzeug.exceptions import HTTPException, BadRequest
+import requests
+import secrets
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
                 handlers=[
@@ -95,6 +97,34 @@ def _get_datastore() -> DataStore:
 
 @app.route("/submit", methods=["post"])
 def submit():
+    if not app.config.get("TESTING"):
+        # Require a reCaptcha token.
+        if "recaptchaToken" not in request.json:
+            raise BadRequest("Required recaptchaToken was not sent")
+        recaptchaToken = request.json["recaptchaToken"]
+        url = "https://www.google.com/recaptcha/api/siteverify"
+        data = {
+            "secret": secrets.recaptchaSecretKey,
+            "response" : recaptchaToken,
+            "remoteip" : request.remote_addr
+        }
+        try:
+            resp = requests.post(url, data=data)
+        except Exception as exc:
+            return {"ok": 0, "description": "Failed to verify reCaptcha token: {}".format(exc)} 
+        
+        try:
+            score = resp.json()["score"]
+        except Exception as exc:
+            return {"ok": 0, "description": "Failed to read score from reCaptcha response: {}. Response={}".format(exc, resp.text)} 
+        
+        # From https://developers.google.com/recaptcha/docs/v3#interpreting_the_score:
+        # "By default, you can use a threshold of 0.5."
+        if score < .5:
+            return {"ok": 0, "description": "reCaptcha token did not have high enough score. Try refreshing the page and submitting again."}
+        
+        del request.json["recaptchaToken"]
+
     try:
         s = Score(**request.json)
     except TypeError as te:
