@@ -140,6 +140,167 @@
     }
     apply_darkmode();
 
+    function BestTimes(opts) {
+        let obj = {};
+        let testing = false;
+
+        if (opts && "testing" in opts) {
+            testing = opts["testing"];
+        }
+
+        function get_uuid() {
+            if (testing) {
+                // Example: "769e5da8-bc9d-4064-ae63-e04ae053666c";
+                // Use a simplified insecure UUID generator.
+                const chars = "0123456789abcdef";
+                let uuid = "";
+                for (let i = 0; i < 8; i++) uuid += chars[Math.floor(Math.random() * chars.length)];
+                uuid += "-";
+                for (let i = 0; i < 4; i++) uuid += chars[Math.floor(Math.random() * chars.length)];
+                uuid += "-";
+                for (let i = 0; i < 4; i++) uuid += chars[Math.floor(Math.random() * chars.length)];
+                uuid += "-";
+                for (let i = 0; i < 4; i++) uuid += chars[Math.floor(Math.random() * chars.length)];
+                uuid += "-";
+                for (let i = 0; i < 12; i++) uuid += chars[Math.floor(Math.random() * chars.length)];
+                return uuid;
+            }
+            return crypto.randomUUID();
+        }
+
+        obj.save_to_leaderboard = function (difficulty, name) {
+            throw "Not yet implemented";
+        }
+
+        obj.try_saving_new_time = function (difficulty, seconds) {
+            let best_times = get_local();
+
+            if (best_times.hasOwnProperty(difficulty)) {
+                if (seconds >= best_times[difficulty]["seconds"]) {
+                    // Not a lower score. Ignore.
+                    return;
+                }
+            }
+
+            best_times[difficulty] = {
+                saved_to_leaderboard: false,
+                // Omit `name`. `name` is set after saving to leaderboard.
+                unix_time: Date.now(), // Milliseconds
+                uuid_str : get_uuid(),
+                seconds: seconds
+            };
+
+            set_local(best_times);
+            render();
+        }
+
+        function unix_time_to_human (unix_time) {
+            return (new Date(unix_time)).toLocaleString();
+        }
+
+        function render() {
+            let best_times = get_local();
+
+            function render_one(k) {
+                let v = best_times[k];
+                let el = document.querySelector("#best_times_" + k);
+                if (!best_times.hasOwnProperty(k)) {
+                    el.innerHTML = "Not yet set.";
+                    return;
+                }
+                el.innerHTML = v["seconds"] + " seconds on " + unix_time_to_human(v["unix_time"]) + "<br/>";
+                if (v["saved_to_leaderboard"]) {
+                    el.innerHTML += "Saved to leaderboard as \"" + v["name"] + "\"";
+                } else {
+                    el.innerHTML += "<a href='#' class='save'>Save to Leaderboard</a>";
+                }
+                el.querySelector(".save").addEventListener("click", function(e) {
+                    e.preventDefault();
+                    obj.save_to_leaderboard(k);
+                    return false;
+                });
+            }
+            render_one("Beginner");
+            render_one("Intermediate");
+            render_one("Expert");
+        }
+
+        // `get_local` returns object stored from local storage.
+        //  { "Beginner"|"Intermediate"|"Expert": { "saved_to_leaderboard": Boolean, "name": Optional(String), "unix_time": Integer, "uuid_str": String, seconds: Integer } }
+        function get_local() {
+            let key = "best_times";
+            if (testing) {
+                key += "_testing";
+            }
+            let best_times_str = localStorage.getItem(key);
+            if (best_times_str == null) {
+                return {};
+            }
+            return JSON.parse(best_times_str);
+        }
+
+        function set_local(best_times) {
+            let key = "best_times";
+            if (testing) {
+                key += "_testing";
+            }
+            localStorage.setItem(key, JSON.stringify(best_times));
+        }
+
+        obj.clear_local = function () {
+            let key = "best_times";
+            if (testing) {
+                key += "_testing";
+            }
+            localStorage.removeItem(key);
+            render();
+        }
+
+        // Do initial render.
+        render();
+        return obj;
+    }
+
+    function test_best_times() {
+        const bt = BestTimes({ testing: true });
+        bt.clear_local();
+        let beginner = document.querySelector("#best_times_Beginner");
+
+        // Test no time is set.
+        {
+            let got = beginner.textContent.trim();
+            let expect = "Not yet set";
+            console.assert(got.includes(expect), "expected '%s' to contain '%s'", got, expect);
+        }
+
+        // Test setting a time.
+        {
+            bt.try_saving_new_time("Beginner", 123);
+            let got = beginner.textContent.trim();
+            let expect = "123 seconds";
+            console.assert(got.includes(expect), "expected '%s' to contain '%s'", got, expect);
+        }
+
+        // Test clearing.
+        {
+            bt.try_saving_new_time("Beginner", 123);
+            bt.clear_local();
+            let got = beginner.textContent.trim();
+            let expect = "Not yet set";
+            console.assert(got.includes(expect), "expected '%s' to contain '%s'", got, expect);
+        }
+
+        // Test sending to test leaderboard.
+        {
+            bt.try_saving_new_time("Beginner", 123);
+            bt.clear_local();
+            bt.save_to_leaderboard ("Beginner", "foo");
+        }
+    }
+    test_best_times();
+
+    const best_times = BestTimes();
+
     // Set up config listeners.
     {
         document.querySelectorAll("[name=secondary_chording]").forEach((el) => {
