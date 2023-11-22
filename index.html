@@ -9,7 +9,8 @@
         }
 
         body.darkmode a,
-        body.darkmode small {
+        body.darkmode small,
+        body.darkmode #last-updated {
             color: white;
         }
 
@@ -30,7 +31,8 @@
             margin: 10px auto;
         }
 
-        #config {
+        #config,
+        #best_times {
             background: white;
             background: #c0c0c0;
             display: none;
@@ -39,15 +41,18 @@
             padding: 10px 10px 10px 10px;
         }
 
-        #config a {
+        #config a,
+        #best_times a {
             color: #000;
         }
 
-        #config .options {
+        #config .options,
+        #best_times .options {
             padding-left: 10px;
         }
 
-        #config label {
+        #config label,
+        #best_times label {
             position: relative;
             left: 3px;
             top: -1px;
@@ -88,7 +93,31 @@
                     for="difficulty_Expert">Expert</label><br />
             </div>
         </div>
+        <p><a href="#" id="best_times_open">Open Personal Best Times</a><span id="new_best">(New Best!)</span></p>
+        <div id="best_times">
+            <a href="#" id="best_times_close">Close Personal Best Times</a><br />
+            <h2>Beginner</h2>
+            <p id="best_times_Beginner">
+                Not yet set.<br />
+            </p>
+            <h2>Intermediate</h2>
+            <p id="best_times_Intermediate">
+                123 seconds on 8/28/2023, 8:53:40 PM.<br />
+                <a href="#" class="save">Save to Leaderboard</a>
+            </p>
+            <h2>Expert</h2>
+            <p id="best_times_Expert">
+                123 seconds on 8/28/2023, 8:53:40 PM.<br />
+                Saved to leaderboard as "Kevin Albertson".
+            </p>
+
+            <br />
+            <p>Personal Best Times are saved in the browser.</p>
+            <p><a href="#" id="best_times_clear">Clear Personal Best Times</a></p>
+        </div>
+        <p><a href="https://minesweeper-leaderboard.kevinalbs.com" target="_blank">Open Leaderboard.</a></p>
         <small>View the source on <a href="https://github.com/kevinAlbs/minesweeper" target="_blank">Github</a></small>
+        <p id="last-updated">Last updated: 2023-11-22 (Added leaderboard)</p>
     </div>
 </body>
 <script>
@@ -157,6 +186,16 @@
         document.querySelector("#config_close").addEventListener("click", function (e) {
             e.preventDefault();
             document.querySelector("#config").style.display = "none";
+            return false;
+        });
+        document.querySelector("#best_times_open").addEventListener("click", function (e) {
+            e.preventDefault();
+            document.querySelector("#best_times").style.display = "block";
+            return false;
+        });
+        document.querySelector("#best_times_close").addEventListener("click", function (e) {
+            e.preventDefault();
+            document.querySelector("#best_times").style.display = "none";
             return false;
         });
     }
