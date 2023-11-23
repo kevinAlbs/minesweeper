@@ -106,7 +106,7 @@
             <p>Personal Best Times are saved in the browser.</p>
             <p><a href="#" id="best_times_clear">Clear Personal Best Times</a></p>
         </div>
-        <p><a href="{{ url_for("get") }}" target="_blank">Open Leaderboard.</a></p>
+        <p><a id="open_leaderboard" href="{{ url_for("get") }}" target="_blank">Open Leaderboard.</a></p>
         <small>View the source on <a href="https://github.com/kevinAlbs/minesweeper" target="_blank">Github</a></small>
         <p id="last-updated">Last updated: 2023-11-22 (Added leaderboard)</p>
     </div>
@@ -132,41 +132,29 @@
     }
     apply_darkmode();
 
-    function BestTimes(opts) {
-        let obj = {};
-        let testing = false;
+    // The URL hash can be used for manual testing.
+    // Example: `http://localhost:5000/#[testWithOneMine],[useTestLeaderboard]`
+    const testConfig = {
+        // `useTestLeaderboard` enables use of the test leaderboard database.
+        useTestLeaderboard : window.location.hash.indexOf("[useTestLeaderboard]") != -1,
+        // `testWithOneMine` enables testing with one mine.
+        testWithOneMine : window.location.hash.indexOf("[testWithOneMine]") != -1,
+    };
 
-        if (opts && "testing" in opts) {
-            testing = opts["testing"];
-        }
+    function BestTimes() {
+        let obj = {};
 
         function get_uuid() {
-            if (testing) {
-                // Example: "769e5da8-bc9d-4064-ae63-e04ae053666c";
-                // Use a simplified insecure UUID generator.
-                const chars = "0123456789abcdef";
-                let uuid = "";
-                for (let i = 0; i < 8; i++) uuid += chars[Math.floor(Math.random() * chars.length)];
-                uuid += "-";
-                for (let i = 0; i < 4; i++) uuid += chars[Math.floor(Math.random() * chars.length)];
-                uuid += "-";
-                for (let i = 0; i < 4; i++) uuid += chars[Math.floor(Math.random() * chars.length)];
-                uuid += "-";
-                for (let i = 0; i < 4; i++) uuid += chars[Math.floor(Math.random() * chars.length)];
-                uuid += "-";
-                for (let i = 0; i < 12; i++) uuid += chars[Math.floor(Math.random() * chars.length)];
-                return uuid;
-            }
             return crypto.randomUUID();
         }
 
-        obj.save_to_leaderboard = function (difficulty, name, done) {
+        obj.save_to_leaderboard = function (difficulty, name) {
             let best_times = get_local();
             console.assert(best_times.hasOwnProperty(difficulty),
                 "Unexpected attempt to save %s to leaderboard, but %s is not saved to local: %s", difficulty, difficulty, JSON.stringify(best_times));
 
             grecaptcha.ready(function () {
-                const promise = grecaptcha.execute('6LdjrxgpAAAAAE9axubUvn-HcW7oInLysspkriUZ', { action: 'submit' });                
+                const promise = grecaptcha.execute('6LdjrxgpAAAAAE9axubUvn-HcW7oInLysspkriUZ', { action: 'submit' });
                 promise.then(function (token) {
                     let data = {
                         "recaptchaToken": token,
@@ -177,8 +165,8 @@
                         "uuid_str": best_times[difficulty]["uuid_str"]
                     };
 
-                    if (testing) {
-                        data["testOnlyDoNotSave"] = true;
+                    if (testConfig.useTestLeaderboard) {
+                        data["useTestLeaderboard"] = true;
                     }
                     
                     return fetch("{{ url_for('submit') }}", {
@@ -193,20 +181,18 @@
                 }).then(function (data) {
                     if (data["ok"] === 0) {
                         alert ("Failed to save to leaderboard: \"" + data["description"] + "\". Refresh page and try again.");
+                        return;
                     }
                     // Apply `name` and `saved_to_leaderboard` to local store.
                     best_times[difficulty]["saved_to_leaderboard"] = true;
                     best_times[difficulty]["name"] = name;
                     set_local(best_times);
-                    if (done) {
-                        done();
-                    }
+                    render();
                 }).catch(function (error) {
-                    console.error(error);
+                    console.error("Failed to save to leaderboard", error);
                     alert("Failed to save to leaderboard: \"" + error + "\" Refresh page and try again");
                 });
             });
-
         }
 
         obj.try_saving_new_time = function (difficulty, seconds) {
@@ -252,21 +238,30 @@
                     el.innerHTML += "<a href='#' class='save'>Save to Leaderboard</a>";
                     el.querySelector(".save").addEventListener("click", function (e) {
                     e.preventDefault();
-                    obj.save_to_leaderboard(k);
-                    return false;
+                    let name = prompt("Enter name");
+                    if (!name || name.trim() == "") {
+                        return;
+                    }
+                    obj.save_to_leaderboard(k, name);
                 });
                 }
             }
             render_one("Beginner");
             render_one("Intermediate");
             render_one("Expert");
+            if (testConfig.useTestLeaderboard) {
+                document.querySelector("#best_times_open").innerHTML = "Open Personal Best Times (Test Leaderboard)"
+                const open_el = document.querySelector("#open_leaderboard");
+                open_el.innerHTML = "Open Leaderboard (Test Leaderboard).";
+                open_el.setAttribute("href", "{{ url_for ('get' )}}?useTestLeaderboard=true");
+            }
         }
 
         // `get_local` returns object stored from local storage.
         //  { "Beginner"|"Intermediate"|"Expert": { "saved_to_leaderboard": Boolean, "name": Optional(String), "unix_time": Integer, "uuid_str": String, seconds: Integer } }
         function get_local() {
             let key = "best_times";
-            if (testing) {
+            if (testConfig.useTestLeaderboard) {
                 key += "_testing";
             }
             let best_times_str = localStorage.getItem(key);
@@ -278,7 +273,7 @@
 
         function set_local(best_times) {
             let key = "best_times";
-            if (testing) {
+            if (testConfig.useTestLeaderboard) {
                 key += "_testing";
             }
             localStorage.setItem(key, JSON.stringify(best_times));
@@ -286,7 +281,7 @@
 
         obj.clear_local = function () {
             let key = "best_times";
-            if (testing) {
+            if (testConfig.useTestLeaderboard) {
                 key += "_testing";
             }
             localStorage.removeItem(key);
@@ -297,49 +292,6 @@
         render();
         return obj;
     }
-
-    function test_best_times() {
-        const bt = BestTimes({ testing: true });
-        bt.clear_local();
-        let beginner = document.querySelector("#best_times_Beginner");
-
-        // Test no time is set.
-        {
-            let got = beginner.textContent.trim();
-            let expect = "Not yet set";
-            console.assert(got.includes(expect), "expected '%s' to contain '%s'", got, expect);
-        }
-
-        // Test setting a time.
-        {
-            bt.try_saving_new_time("Beginner", 123);
-            let got = beginner.textContent.trim();
-            let expect = "123 seconds";
-            console.assert(got.includes(expect), "expected '%s' to contain '%s'", got, expect);
-        }
-
-        // Test clearing.
-        {
-            bt.try_saving_new_time("Beginner", 123);
-            bt.clear_local();
-            let got = beginner.textContent.trim();
-            let expect = "Not yet set";
-            console.assert(got.includes(expect), "expected '%s' to contain '%s'", got, expect);
-        }
-
-        // Test sending to test leaderboard.
-        {
-            bt.try_saving_new_time("Beginner", 123);
-            let got = beginner.textContent.trim();
-            let expect = "Save to Leaderboard";
-            console.assert(got.includes(expect), "expected '%s' to contain '%s'", got, expect);
-            bt.save_to_leaderboard("Beginner", "foo", () => {
-                got = beginner.textContent.trim();
-                console.assert(!got.includes(expect), "expected '%s' not to contain '%s'", got, expect);
-            })
-        }
-    }
-    test_best_times();
 
     const best_times = BestTimes();
 
@@ -478,7 +430,7 @@
         let difficulty = "Beginner";
         let clock_x = 0;
         const doing_small_test = false;
-        const test_with_one_mine = false;
+        const test_with_one_mine = testConfig.testWithOneMine;
         let time_started;
         let time_stopped;
         let flags_placed;

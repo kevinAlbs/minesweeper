@@ -89,8 +89,8 @@ class DataStore:
     
 app = Flask(__name__)
 
-def _get_datastore() -> DataStore:
-    if app.config.get("TESTING"):
+def _get_datastore(useTestLeaderboard=False) -> DataStore:
+    if app.config.get("TESTING") or useTestLeaderboard:
         return DataStore("test.db")
     return DataStore("data.db")
 
@@ -101,14 +101,14 @@ def home():
 @app.route("/submit", methods=["post"])
 def submit():
 
-    testOnlyDoNotSave = False
-    if "testOnlyDoNotSave" in request.json:
-        testOnlyDoNotSave = request.json["testOnlyDoNotSave"]
-        del request.json["testOnlyDoNotSave"]
+    useTestLeaderboard = False
+    if "useTestLeaderboard" in request.json:
+        useTestLeaderboard = request.json["useTestLeaderboard"]
+        del request.json["useTestLeaderboard"]
         if "recaptchaToken" in request.json:
             del request.json["recaptchaToken"]
 
-    if not app.config.get("TESTING") and not testOnlyDoNotSave:
+    if not app.config.get("TESTING") and not useTestLeaderboard:
         # Require a reCaptcha token.
         if "recaptchaToken" not in request.json:
             raise BadRequest("Required recaptchaToken was not sent")
@@ -140,11 +140,8 @@ def submit():
         s = Score(**request.json)
     except TypeError as te:
         raise BadRequest("Bad arguments: {}".format(str(te)))
-    
-    if testOnlyDoNotSave:
-        return {"ok": 1, "description": "Testing. Not persisting"}
 
-    with _get_datastore() as ds:
+    with _get_datastore(useTestLeaderboard) as ds:
         if ds.scores_has_uuid(s.uuid_str):
             return {"ok": 0, "description": "Score already saved" }
         ds.score_add(s)
@@ -152,7 +149,10 @@ def submit():
 
 @app.route("/get_top_100", methods=["get"])
 def get():
-    with _get_datastore() as ds:
+    useTestLeaderboard = False
+    if "useTestLeaderboard" in request.args:
+        useTestLeaderboard = request.args["useTestLeaderboard"]
+    with _get_datastore(useTestLeaderboard) as ds:
         return {
             "ok": 1,
             "Beginner": ds.scores_get_top_100("Beginner"),
