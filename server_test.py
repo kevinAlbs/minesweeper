@@ -1,12 +1,12 @@
 import unittest
-import leaderboard
+import server
 import flask
 import flask.testing
 import pathlib
 
 class TestLeaderboard (unittest.TestCase):
     def setUp(self):
-        self.app : flask.Flask = leaderboard.app
+        self.app : flask.Flask = server.app
         self.app.config.update({
             "TESTING": True,
         })
