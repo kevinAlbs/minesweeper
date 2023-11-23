@@ -1,5 +1,5 @@
-secrets.py
-leaderboard.db
+appsecrets.py
+data.db
 test.db
 .venv
 __pycache__

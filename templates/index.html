@@ -2,7 +2,7 @@
 
 <head>
     <title>Minesweeper</title>
-    <link rel="icon" type="image/png" href="img/favicon.png" />
+    <link rel="icon" type="image/png" href="{{ url_for("static", filename="img/favicon.png") }}" />
     <style type="text/css">
         body.darkmode {
             background: #222;
@@ -97,29 +97,21 @@
         <div id="best_times">
             <a href="#" id="best_times_close">Close Personal Best Times</a><br />
             <h2>Beginner</h2>
-            <p id="best_times_Beginner">
-                Not yet set.<br />
-            </p>
+            <p id="best_times_Beginner"></p>
             <h2>Intermediate</h2>
-            <p id="best_times_Intermediate">
-                123 seconds on 8/28/2023, 8:53:40 PM.<br />
-                <a href="#" class="save">Save to Leaderboard</a>
-            </p>
+            <p id="best_times_Intermediate"></p>
             <h2>Expert</h2>
-            <p id="best_times_Expert">
-                123 seconds on 8/28/2023, 8:53:40 PM.<br />
-                Saved to leaderboard as "Kevin Albertson".
-            </p>
-
+            <p id="best_times_Expert"></p>
             <br />
             <p>Personal Best Times are saved in the browser.</p>
             <p><a href="#" id="best_times_clear">Clear Personal Best Times</a></p>
         </div>
-        <p><a href="https://minesweeper-leaderboard.kevinalbs.com" target="_blank">Open Leaderboard.</a></p>
+        <p><a href="{{ url_for("get") }}" target="_blank">Open Leaderboard.</a></p>
         <small>View the source on <a href="https://github.com/kevinAlbs/minesweeper" target="_blank">Github</a></small>
         <p id="last-updated">Last updated: 2023-11-22 (Added leaderboard)</p>
     </div>
 </body>
+<script src="https://www.google.com/recaptcha/api.js?render=6LdjrxgpAAAAAE9axubUvn-HcW7oInLysspkriUZ"></script>
 <script>
     const config = {
         secondary_chording: "only_secondary",
@@ -168,8 +160,53 @@
             return crypto.randomUUID();
         }
 
-        obj.save_to_leaderboard = function (difficulty, name) {
-            throw "Not yet implemented";
+        obj.save_to_leaderboard = function (difficulty, name, done) {
+            let best_times = get_local();
+            console.assert(best_times.hasOwnProperty(difficulty),
+                "Unexpected attempt to save %s to leaderboard, but %s is not saved to local: %s", difficulty, difficulty, JSON.stringify(best_times));
+
+            grecaptcha.ready(function () {
+                const promise = grecaptcha.execute('6LdjrxgpAAAAAE9axubUvn-HcW7oInLysspkriUZ', { action: 'submit' });                
+                promise.then(function (token) {
+                    let data = {
+                        "recaptchaToken": token,
+                        "difficulty": difficulty,
+                        "name": name,
+                        "seconds": best_times[difficulty]["seconds"],
+                        "unix_time": best_times[difficulty]["unix_time"],
+                        "uuid_str": best_times[difficulty]["uuid_str"]
+                    };
+
+                    if (testing) {
+                        data["testOnlyDoNotSave"] = true;
+                    }
+                    
+                    return fetch("{{ url_for('submit') }}", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify(data)
+                    })
+                }).then(function (response) {
+                    return response.json();
+                }).then(function (data) {
+                    if (data["ok"] === 0) {
+                        alert ("Failed to save to leaderboard: \"" + data["description"] + "\". Refresh page and try again.");
+                    }
+                    // Apply `name` and `saved_to_leaderboard` to local store.
+                    best_times[difficulty]["saved_to_leaderboard"] = true;
+                    best_times[difficulty]["name"] = name;
+                    set_local(best_times);
+                    if (done) {
+                        done();
+                    }
+                }).catch(function (error) {
+                    console.error(error);
+                    alert("Failed to save to leaderboard: \"" + error + "\" Refresh page and try again");
+                });
+            });
+
         }
 
         obj.try_saving_new_time = function (difficulty, seconds) {
@@ -186,7 +223,7 @@
                 saved_to_leaderboard: false,
                 // Omit `name`. `name` is set after saving to leaderboard.
                 unix_time: Date.now(), // Milliseconds
-                uuid_str : get_uuid(),
+                uuid_str: get_uuid(),
                 seconds: seconds
             };
 
@@ -194,7 +231,7 @@
             render();
         }
 
-        function unix_time_to_human (unix_time) {
+        function unix_time_to_human(unix_time) {
             return (new Date(unix_time)).toLocaleString();
         }
 
@@ -213,12 +250,12 @@
                     el.innerHTML += "Saved to leaderboard as \"" + v["name"] + "\"";
                 } else {
                     el.innerHTML += "<a href='#' class='save'>Save to Leaderboard</a>";
-                }
-                el.querySelector(".save").addEventListener("click", function(e) {
+                    el.querySelector(".save").addEventListener("click", function (e) {
                     e.preventDefault();
                     obj.save_to_leaderboard(k);
                     return false;
                 });
+                }
             }
             render_one("Beginner");
             render_one("Intermediate");
@@ -293,8 +330,13 @@
         // Test sending to test leaderboard.
         {
             bt.try_saving_new_time("Beginner", 123);
-            bt.clear_local();
-            bt.save_to_leaderboard ("Beginner", "foo");
+            let got = beginner.textContent.trim();
+            let expect = "Save to Leaderboard";
+            console.assert(got.includes(expect), "expected '%s' to contain '%s'", got, expect);
+            bt.save_to_leaderboard("Beginner", "foo", () => {
+                got = beginner.textContent.trim();
+                console.assert(!got.includes(expect), "expected '%s' not to contain '%s'", got, expect);
+            })
         }
     }
     test_best_times();
@@ -504,7 +546,7 @@
                 grid[2][2].is_mine = true;
                 mine_count = 3;
                 mines_placed = true;
-                cnv.style.backgroundImage = "url('img/minesweeper-expert.png')";
+                cnv.style.backgroundImage = "url({{ url_for('static', filename='img/minesweeper-expert.png') }})";
                 cnv.setAttribute("width", "504");
                 cnv.setAttribute("height", "323");
                 smiley.x = 240;
@@ -514,7 +556,7 @@
                 grid = grid_make(16, 30);
                 mine_count = 99;
                 mines_placed = false;
-                cnv.style.backgroundImage = "url('img/minesweeper-expert.png')";
+                cnv.style.backgroundImage = "url({{ url_for('static', filename='img/minesweeper-expert.png') }})";
                 cnv.setAttribute("width", "504");
                 cnv.setAttribute("height", "323");
                 smiley.x = 240;
@@ -523,7 +565,7 @@
                 grid = grid_make(16, 16);
                 mine_count = 40;
                 mines_placed = false;
-                cnv.style.backgroundImage = "url('img/minesweeper-intermediate.png')";
+                cnv.style.backgroundImage = "url({{ url_for('static', filename='img/minesweeper-intermediate.png') }})";
                 cnv.setAttribute("width", "280");
                 cnv.setAttribute("height", "323");
                 smiley.x = 128;
@@ -532,7 +574,7 @@
                 grid = grid_make(8, 8);
                 mine_count = 10;
                 mines_placed = false;
-                cnv.style.backgroundImage = "url('img/minesweeper-beginner.png')";
+                cnv.style.backgroundImage = "url({{ url_for('static', filename='img/minesweeper-beginner.png') }})";
                 cnv.setAttribute("width", "152");
                 cnv.setAttribute("height", "195");
                 smiley.x = 64;
@@ -550,7 +592,7 @@
             if (test_with_one_mine) {
                 mine_count = 1;
             }
-            
+
             if (opts && 'grid' in opts) {
                 // Set fixed grid for testing.
                 grid = opts.grid;
@@ -1233,7 +1275,7 @@
             test_game();
             game = game_make(gMouse);
             game.start({
-                win_callback : function () {
+                win_callback: function () {
                     best_times.try_saving_new_time(game.get_difficulty(), game.get_seconds());
                 }
             });
@@ -1244,7 +1286,7 @@
         }
 
         // Load the sprite sheet from an image file
-        image.src = "img/spritesheet.png";
+        image.src = "{{ url_for('static', filename='img/spritesheet.png') }}";
     }());
 
     // Begin grid logic. Does not interact with UI.

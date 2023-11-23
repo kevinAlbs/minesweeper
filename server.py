@@ -1,13 +1,12 @@
-from flask import Flask, json, request
+from flask import Flask, json, request, render_template
 import pathlib
 import sqlite3
 import logging
 import typing
 import dataclasses
-from flask import json
 from werkzeug.exceptions import HTTPException, BadRequest
 import requests
-import secrets
+import appsecrets
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
                 handlers=[
@@ -95,16 +94,28 @@ def _get_datastore() -> DataStore:
         return DataStore("test.db")
     return DataStore("data.db")
 
+@app.route("/")
+def home():
+    return render_template("index.html")
+
 @app.route("/submit", methods=["post"])
 def submit():
-    if not app.config.get("TESTING"):
+
+    testOnlyDoNotSave = False
+    if "testOnlyDoNotSave" in request.json:
+        testOnlyDoNotSave = request.json["testOnlyDoNotSave"]
+        del request.json["testOnlyDoNotSave"]
+        if "recaptchaToken" in request.json:
+            del request.json["recaptchaToken"]
+
+    if not app.config.get("TESTING") and not testOnlyDoNotSave:
         # Require a reCaptcha token.
         if "recaptchaToken" not in request.json:
             raise BadRequest("Required recaptchaToken was not sent")
         recaptchaToken = request.json["recaptchaToken"]
         url = "https://www.google.com/recaptcha/api/siteverify"
         data = {
-            "secret": secrets.recaptchaSecretKey,
+            "secret": appsecrets.recaptchaSecretKey,
             "response" : recaptchaToken,
             "remoteip" : request.remote_addr
         }
@@ -130,6 +141,9 @@ def submit():
     except TypeError as te:
         raise BadRequest("Bad arguments: {}".format(str(te)))
     
+    if testOnlyDoNotSave:
+        return {"ok": 1, "description": "Testing. Not persisting"}
+
     with _get_datastore() as ds:
         if ds.scores_has_uuid(s.uuid_str):
             return {"ok": 0, "description": "Score already saved" }
