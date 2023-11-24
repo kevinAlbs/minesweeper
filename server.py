@@ -153,12 +153,10 @@ def get():
     if "useTestLeaderboard" in request.args:
         useTestLeaderboard = request.args["useTestLeaderboard"]
     with _get_datastore(useTestLeaderboard) as ds:
-        return {
-            "ok": 1,
-            "Beginner": ds.scores_get_top_100("Beginner"),
-            "Intermediate": ds.scores_get_top_100("Intermediate"),
-            "Expert": ds.scores_get_top_100("Expert")
-        }
+        return render_template("leaderboard.html",
+                               beginner=ds.scores_get_top_100("Beginner"),
+                               intermediate=ds.scores_get_top_100("Intermediate"),
+                               expert=ds.scores_get_top_100("Expert"))
 
 @app.errorhandler(HTTPException)
 def handle_exception(e):

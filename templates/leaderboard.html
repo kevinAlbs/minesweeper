@@ -1,0 +1,87 @@
+<html>
+
+<head>
+    <title>Minesweeper - Leaderboard</title>
+    <link rel="icon" type="image/png" href="{{ url_for("static", filename="img/favicon.png") }}" />
+    <style type="text/css">
+        * {
+            padding: 0;
+            margin: 0;
+            font-family: sans-serif;
+        }
+
+        #container {
+            margin: 10px auto;
+            width: 95%;
+        }
+
+        #columns {
+            display:flex;
+        }
+
+        #columns > div {
+            flex: 1;
+            padding: 1em;
+        }
+
+        table td {
+            padding: 2px 10px;
+        }
+
+        table tr td:first-child {
+            width: 10%;
+        }
+
+        table {
+            background: #EEE;
+            width: 100%;
+            margin-bottom: 1em;
+        }
+
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <h1>Top 100 Scores</h1>
+        <div id="columns">
+        <div id="Beginner">
+            <h2>Beginner</h2>
+            {% for score in beginner %}
+                <table data-uuid-str="{{ score.uuid_str }}">
+                    <tr><td>Place</td><td>{{ loop.index }}</td></tr>
+                    <tr><td>Name</td><td>{{ score.name }}</td></tr>
+                    <tr><td>Seconds</td><td>{{ score.seconds }}</td></tr>
+                </table>
+            {% else %}
+                None yet.
+            {% endfor %}
+        </div>
+        <div id="Intermediate">
+            <h2>Intermediate</h2>
+            {% for score in intermediate %}
+                <table data-uuid-str="{{ score.uuid_str }}">
+                    <tr><td>Place</td><td>{{ loop.index }}</td></tr>
+                    <tr><td>Name</td><td>{{ score.name }}</td></tr>
+                    <tr><td>Seconds</td><td>{{ score.seconds }}</td></tr>
+                </table>
+            {% else %}
+                None yet.
+            {% endfor %}
+        </div>
+        <div id="Expert">
+            <h2>Expert</h2>
+            {% for score in expert %}
+                <table data-uuid-str="{{ score.uuid_str }}">
+                    <tr><td>Place</td><td>{{ loop.index }}</td></tr>
+                    <tr><td>Name</td><td>{{ score.name }}</td></tr>
+                    <tr><td>Seconds</td><td>{{ score.seconds }}</td></tr>
+                </table>
+            {% else %}
+                None yet.
+            {% endfor %}
+        </div>
+        </div>
+    </div>
+</body>
+</html>
