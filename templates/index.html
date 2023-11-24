@@ -41,6 +41,12 @@
             padding: 10px 10px 10px 10px;
         }
 
+        #config .close, #best_times .close {
+            position: absolute;
+            right: 1em;
+            top: .5em;
+        }
+
         #config a,
         #best_times a {
             color: #000;
@@ -66,7 +72,7 @@
         <canvas width="504" height="323"></canvas>
         <p><a href="#" id="config_open">Open Settings</a></p>
         <div id="config">
-            <a href="#" id="config_close">Close Settings</a><br />
+            <a href="#" id="config_close" class="close">Close</a>
             <h1>Use darkmode?</h1>
             <div class="options">
                 <input type="radio" name="darkmode" value="no" id="darkmode_no"><label
@@ -95,11 +101,13 @@
         </div>
         <p><a href="#" id="best_times_open">Open Personal Best Times</a></p>
         <div id="best_times">
-            <a href="#" id="best_times_close">Close Personal Best Times</a><br />
+            <a href="#" id="best_times_close" class="close">Close</a>
             <h2>Beginner</h2>
             <p id="best_times_Beginner"></p>
+            <br/>
             <h2>Intermediate</h2>
             <p id="best_times_Intermediate"></p>
+            <br/>
             <h2>Expert</h2>
             <p id="best_times_Expert"></p>
             <br />
