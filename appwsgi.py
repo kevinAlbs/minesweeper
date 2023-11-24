@@ -2,7 +2,7 @@ import os
 import sys
 
 sys.path.insert(0, '/var/www/minesweeper')
-os.chdir('/var/www/garage_checker/minesweeper')
+os.chdir('/var/www/minesweeper')
 
 import server
 
