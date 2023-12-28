@@ -2,7 +2,7 @@
 
 Minesweeper in the browser. Play here: https://kevinalbs.com/minesweeper/
 
-![Minesweeper Gameplay](./img/minesweeper-gameplay.gif)
+![Minesweeper Gameplay](./static/img/minesweeper-gameplay.gif)
 
 
 # Reporting a bug
