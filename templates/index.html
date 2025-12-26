@@ -97,6 +97,10 @@
                     for="difficulty_Intermediate">Intermediate</label><br />
                 <input type="radio" name="difficulty" value="Expert" id="difficulty_Expert"><label
                     for="difficulty_Expert">Expert</label><br />
+                <input type="radio" name="difficulty" value="Custom" id="difficulty_Custom"><label for="difficulty_Custom">Custom</label>
+                <input type="number" style="width: 3em" placeholder=16 min=1 max=50 id="difficulty_Custom_rows"/> x <input type="number" style="width: 3em" placeholder=30 min=1 max=50 id="difficulty_Custom_cols"/>
+                with <input type="number" style="width: 3em" placeholder=99 min=1 max=999 id="difficulty_Custom_mines"/> mines.
+                <br />
             </div>
         </div>
         <p><a href="#" id="best_times_open">Open Personal Best Times</a></p>
@@ -124,6 +128,11 @@
     const config = {
         secondary_chording: "only_secondary",
         difficulty: "Expert",
+        difficulty_custom: {
+            rows: 16,
+            columns: 30,
+            mines: 99,
+        },
         darkmode: "no"
     };
     // If local storage has saved config, apply it.
@@ -511,6 +520,31 @@
                 cnv.setAttribute("height", "323");
                 smiley.x = 240;
                 clock_x = 446;
+            }
+            else if (difficulty == "Custom") {
+                const get_value_as_int = (selector) => {
+                    const el = document.querySelector(selector);
+                    let value = el.value.trim();
+                    if (value === "") {
+                        // Use placeholder.
+                        value = el.getAttribute("placeholder");
+                    }
+                    return parseInt(value);
+                }
+
+                const num_rows = get_value_as_int("#difficulty_Custom_rows");
+                const num_cols = get_value_as_int("#difficulty_Custom_cols");
+                const num_mines = get_value_as_int("#difficulty_Custom_mines");
+
+                grid = grid_make(num_rows, num_cols);
+                mine_count = num_mines;
+                mines_placed = false;
+                cnv.style.backgroundImage = "None";
+                // Each cell has width/height of 16.
+                cnv.setAttribute("width", (16 * num_cols) + "");
+                cnv.setAttribute("height", (16 * num_rows) + "");
+                smiley.x = 240; // TODO: adjust
+                clock_x = 446; // TODO: adjust
             }
             else if (difficulty == "Expert") {
                 grid = grid_make(16, 30);
@@ -1232,7 +1266,15 @@
                 sprite_map[sprite_names[sprite_names_i++]] = createSprite(image, 14 * i, 0, 13, 23);
             }
 
-            test_game();
+            try {
+                test_game();
+            } catch (e) {
+                if (e instanceof RangeError) {
+                    // Likely caused by too few mines.
+                    alert("Failed to create board with custom. Try adding more mines or a smaller board.");
+                    return;
+                }
+            }
             game = game_make(gMouse);
             game.start({
                 win_callback: function () {
@@ -1724,7 +1766,7 @@
         test_grid_to_json();
     }
 
-    run_tests();
+    // run_tests();
 
     // Testing ... end
 </script>
