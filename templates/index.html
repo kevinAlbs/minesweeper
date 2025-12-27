@@ -454,12 +454,13 @@
         secondaryPressed: false, // set to false after processing.
         primaryReleased: false, // set to false after processing.
         secondaryReleased: false, // ste to false after processing.
+        origin_el: document.querySelector("canvas")
     };
     // Set up mouse events.
     {
         document.addEventListener("mousemove", function (e) {
-            gMouse.offsetX = e.offsetX;
-            gMouse.offsetY = e.offsetY;
+            gMouse.offsetX = e.pageX - gMouse.origin_el.getBoundingClientRect().x;
+            gMouse.offsetY = e.pageY - gMouse.origin_el.getBoundingClientRect().y;
             gMouse.buttons = e.buttons;
         });
 
