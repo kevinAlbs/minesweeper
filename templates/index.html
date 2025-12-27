@@ -64,6 +64,10 @@
             top: -1px;
             cursor: pointer;
         }
+
+        canvas {
+            background: #c0c0c0;
+        }
     </style>
 </head>
 
@@ -98,8 +102,8 @@
                 <input type="radio" name="difficulty" value="Expert" id="difficulty_Expert"><label
                     for="difficulty_Expert">Expert</label><br />
                 <input type="radio" name="difficulty" value="Custom" id="difficulty_Custom"><label for="difficulty_Custom">Custom</label>
-                <input type="number" style="width: 3em" placeholder=16 min=1 max=50 id="difficulty_Custom_rows"/> x <input type="number" style="width: 3em" placeholder=30 min=1 max=50 id="difficulty_Custom_cols"/>
-                with <input type="number" style="width: 3em" placeholder=99 min=1 max=999 id="difficulty_Custom_mines"/> mines.
+                <input type="number" style="width: 3em" value=16 min=1 max=50 id="difficulty_Custom_rows"/> x <input type="number" style="width: 3em" value=30 min=1 max=50 id="difficulty_Custom_cols"/>
+                with <input type="number" style="width: 4em" value=99 min=1 max=999 id="difficulty_Custom_mines"/> mines.
                 <br />
             </div>
         </div>
@@ -120,7 +124,7 @@
         </div>
         <p><a id="open_leaderboard" href="{{ url_for("get") }}" target="_blank">Open Leaderboard.</a></p>
         <small>View the source on <a href="https://github.com/kevinAlbs/minesweeper" target="_blank">Github</a></small>
-        <p id="last-updated">Last updated: 2023-11-22 (Added leaderboard)</p>
+        <p id="last-updated">Last updated: 2025-12-26 (Added custom setting)</p>
     </div>
 </body>
 <script src="https://www.google.com/recaptcha/api.js?render=6LdjrxgpAAAAAE9axubUvn-HcW7oInLysspkriUZ"></script>
@@ -139,6 +143,9 @@
     config.secondary_chording = localStorage.getItem("secondary_chording") || config.secondary_chording;
     config.difficulty = localStorage.getItem("difficulty") || config.difficulty;
     config.darkmode = localStorage.getItem("darkmode") || config.darkmode;
+    config.difficulty_custom.rows = parseInt(localStorage.getItem("difficulty_custom_rows")) || config.difficulty_custom.rows;
+    config.difficulty_custom.columns = parseInt(localStorage.getItem("difficulty_custom_columns")) || config.difficulty_custom.columns;
+    config.difficulty_custom.mines = parseInt(localStorage.getItem("difficulty_custom_mines")) || config.difficulty_custom.mines;
     // apply initial setting of darkmode.
     function apply_darkmode() {
         if (config.darkmode === "yes") {
@@ -340,6 +347,64 @@
                 el.checked = true;
             }
         });
+
+        function applyCustom() {
+            let num_cols;
+            {
+                let el = document.querySelector("#difficulty_Custom_cols");
+                let value = parseInt(el.value);
+                if (value === NaN) {
+                    value = 30; // Default.
+                }
+                value = Math.min(value, 50);
+                value = Math.max(value, 1);
+                el.value = value;
+                num_cols = value;
+                config.difficulty_custom.columns = value;
+                localStorage.setItem("difficulty_custom_columns", value + "");
+            }
+
+            let num_rows;
+            {
+                let el = document.querySelector("#difficulty_Custom_rows");
+                let value = parseInt(el.value);
+                if (value === NaN) {
+                    value = 30; // Default.
+                }
+                value = Math.min(value, 50);
+                value = Math.max(value, 1);
+                el.value = value;
+                num_rows = value;
+                config.difficulty_custom.rows = value;
+                localStorage.setItem("difficulty_custom_rows", value + "");
+            }
+
+            let num_mines;
+            {
+                let el = document.querySelector("#difficulty_Custom_mines");
+                let value = parseInt(el.value);
+                if (value === NaN) {
+                    value = 99; // Default.
+                }
+                value = Math.min(value, 999);
+                value = Math.max(value, 1);
+                let num_cells = num_rows * num_cols;
+                if (num_cells < value) {
+                    value = num_cells - 1;
+                }
+                el.value = value;
+                num_mines = value;
+                config.difficulty_custom.mines = value;
+                localStorage.setItem("difficulty_custom_mines", value + "");
+            }
+            
+            if (game) {
+                game.reset();
+            }
+        }
+        document.querySelector("#difficulty_Custom_cols").addEventListener("change", applyCustom);
+        document.querySelector("#difficulty_Custom_rows").addEventListener("change", applyCustom);
+        document.querySelector("#difficulty_Custom_mines").addEventListener("change", applyCustom);
         document.querySelectorAll("[name=darkmode]").forEach((el) => {
             el.addEventListener("change", (e) => {
                 config.darkmode = e.target.value;
@@ -507,6 +572,8 @@
                 difficulty = "Test";
             }
 
+            let container_width = 504; // Default.
+
             if (difficulty == "Test") {
                 // Test with 3 mines placed deterministically on a 4x3 board.
                 grid = grid_make(4, 3);
@@ -522,29 +589,23 @@
                 clock_x = 446;
             }
             else if (difficulty == "Custom") {
-                const get_value_as_int = (selector) => {
-                    const el = document.querySelector(selector);
-                    let value = el.value.trim();
-                    if (value === "") {
-                        // Use placeholder.
-                        value = el.getAttribute("placeholder");
-                    }
-                    return parseInt(value);
-                }
-
-                const num_rows = get_value_as_int("#difficulty_Custom_rows");
-                const num_cols = get_value_as_int("#difficulty_Custom_cols");
-                const num_mines = get_value_as_int("#difficulty_Custom_mines");
+                const num_rows = config.difficulty_custom.rows;
+                const num_cols = config.difficulty_custom.columns;
+                const num_mines = config.difficulty_custom.mines;
 
                 grid = grid_make(num_rows, num_cols);
                 mine_count = num_mines;
                 mines_placed = false;
                 cnv.style.backgroundImage = "None";
                 // Each cell has width/height of 16.
-                cnv.setAttribute("width", (16 * num_cols) + "");
-                cnv.setAttribute("height", (16 * num_rows) + "");
-                smiley.x = 240; // TODO: adjust
-                clock_x = 446; // TODO: adjust
+                const board_width = (16 * num_cols + 24);
+                cnv.setAttribute("width", board_width + "px");
+                cnv.setAttribute("height", (16 * num_rows + 67) + "px");
+                smiley.x = (board_width / 2) - 12;
+                clock_x = (board_width - 58);
+                if (board_width > 504) {
+                    container_width = board_width;
+                }
             }
             else if (difficulty == "Expert") {
                 grid = grid_make(16, 30);
@@ -576,7 +637,8 @@
             } else {
                 console.error("Unexpected difficulty: " + difficulty);
             }
-            document.querySelector("#container").style.width = "504px";
+            
+            document.querySelector("#container").style.width = container_width + "px";
             mouseState = kMouseStateNone;
             losing_mines = [];
             won = false;
