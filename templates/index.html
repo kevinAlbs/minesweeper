@@ -2,7 +2,7 @@
 
 <head>
     <title>Minesweeper</title>
-    <link rel="icon" type="image/png" href="{{ url_for("static", filename="img/favicon.png") }}" />
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}" />
     <style type="text/css">
         body.darkmode {
             background: #222;
@@ -41,7 +41,8 @@
             padding: 10px 10px 10px 10px;
         }
 
-        #config .close, #best_times .close {
+        #config .close,
+        #best_times .close {
             position: absolute;
             right: 1em;
             top: .5em;
@@ -101,9 +102,12 @@
                     for="difficulty_Intermediate">Intermediate</label><br />
                 <input type="radio" name="difficulty" value="Expert" id="difficulty_Expert"><label
                     for="difficulty_Expert">Expert</label><br />
-                <input type="radio" name="difficulty" value="Custom" id="difficulty_Custom"><label for="difficulty_Custom">Custom</label>
-                <input type="number" style="width: 3em" value=16 min=1 max=50 id="difficulty_Custom_rows"/> x <input type="number" style="width: 3em" value=30 min=1 max=50 id="difficulty_Custom_cols"/>
-                with <input type="number" style="width: 4em" value=99 min=1 max=999 id="difficulty_Custom_mines"/> mines.
+                <input type="radio" name="difficulty" value="Custom" id="difficulty_Custom"><label
+                    for="difficulty_Custom">Custom</label>
+                <input type="number" style="width: 3em" value=16 min=1 max=50 id="difficulty_Custom_rows" /> x <input
+                    type="number" style="width: 3em" value=30 min=1 max=50 id="difficulty_Custom_cols" />
+                with <input type="number" style="width: 4em" value=99 min=1 max=999 id="difficulty_Custom_mines" />
+                mines.
                 <br />
             </div>
         </div>
@@ -112,17 +116,17 @@
             <a href="#" id="best_times_close" class="close">Close</a>
             <h2>Beginner</h2>
             <p id="best_times_Beginner"></p>
-            <br/>
+            <br />
             <h2>Intermediate</h2>
             <p id="best_times_Intermediate"></p>
-            <br/>
+            <br />
             <h2>Expert</h2>
             <p id="best_times_Expert"></p>
             <br />
             <p>Personal Best Times are saved in the browser.</p>
             <p><a href="#" id="best_times_clear">Clear Personal Best Times</a></p>
         </div>
-        <p><a id="open_leaderboard" href="{{ url_for("get") }}" target="_blank">Open Leaderboard.</a></p>
+        <p><a id="open_leaderboard" href="{{ url_for('get') }}" target="_blank">Open Leaderboard.</a></p>
         <small>View the source on <a href="https://github.com/kevinAlbs/minesweeper" target="_blank">Github</a></small>
         <p id="last-updated">Last updated: 2025-12-26 (Added custom setting)</p>
     </div>
@@ -160,9 +164,9 @@
     // Example: `http://localhost:5000/#[testWithOneMine],[useTestLeaderboard]`
     const testConfig = {
         // `useTestLeaderboard` enables use of the test leaderboard database.
-        useTestLeaderboard : window.location.hash.indexOf("[useTestLeaderboard]") != -1,
+        useTestLeaderboard: window.location.hash.indexOf("[useTestLeaderboard]") != -1,
         // `testWithOneMine` enables testing with one mine.
-        testWithOneMine : window.location.hash.indexOf("[testWithOneMine]") != -1,
+        testWithOneMine: window.location.hash.indexOf("[testWithOneMine]") != -1,
     };
 
     function BestTimes() {
@@ -192,7 +196,7 @@
                     if (testConfig.useTestLeaderboard) {
                         data["useTestLeaderboard"] = true;
                     }
-                    
+
                     return fetch("{{ url_for('submit') }}", {
                         method: "POST",
                         headers: {
@@ -204,7 +208,7 @@
                     return response.json();
                 }).then(function (data) {
                     if (data["ok"] === 0) {
-                        alert ("Failed to save to leaderboard: \"" + data["description"] + "\". Refresh page and try again.");
+                        alert("Failed to save to leaderboard: \"" + data["description"] + "\". Refresh page and try again.");
                         return;
                     }
                     // Apply `name` and `saved_to_leaderboard` to local store.
@@ -261,13 +265,13 @@
                 } else {
                     el.innerHTML += "<a href='#' class='save'>Save to Leaderboard</a>";
                     el.querySelector(".save").addEventListener("click", function (e) {
-                    e.preventDefault();
-                    let name = prompt("Enter name");
-                    if (!name || name.trim() == "") {
-                        return;
-                    }
-                    obj.save_to_leaderboard(k, name);
-                });
+                        e.preventDefault();
+                        let name = prompt("Enter name");
+                        if (!name || name.trim() == "") {
+                            return;
+                        }
+                        obj.save_to_leaderboard(k, name);
+                    });
                 }
             }
             render_one("Beginner");
@@ -397,7 +401,7 @@
                 config.difficulty_custom.mines = value;
                 localStorage.setItem("difficulty_custom_mines", value + "");
             }
-            
+
             if (game) {
                 game.reset();
             }
@@ -638,7 +642,7 @@
             } else {
                 console.error("Unexpected difficulty: " + difficulty);
             }
-            
+
             document.querySelector("#container").style.width = container_width + "px";
             mouseState = kMouseStateNone;
             losing_mines = [];
@@ -1423,6 +1427,13 @@
         }
     }
 
+    // grid_move_mines moves hidden unflagged mines.
+    // Returns false if a flag is incorrect.
+    function grid_move_mines(grid) {
+        // TODO
+        return true;
+    }
+
     // grid_to_json returns a JSON friendly grid
     function grid_to_json(grid) {
         const num_rows = grid.length;
@@ -1819,6 +1830,51 @@
         }
     }
 
+    function test_moving_mines() {
+        // count_mines is a test helper to return the count of mines.
+        function count_mines(grid) {
+            return grid.reduce((sum, row) => sum + row.reduce((sum, cell) => sum + (cell.is_mine ? 1 : 0), 0), 0);
+        }
+
+        // Moving mines re-arrages.
+        {
+            const grid = grid_make(2, 2);
+            grid[0][0].is_mine = true;
+            // Expect mine is eventually moved.
+            let changed = false;
+            for (let i = 0; i < 10; i++) {
+                console.assert(grid_move_mines(grid));
+                if (!grid[0][0].is_mine) {
+                    changed = true;
+                }
+                let mine_count = count_mines(grid);
+                console.assert(mine_count == 1);
+            }
+            console.assert(changed); // Expect mine moved at least once.
+        }
+
+        // Moving does not move flagged mines.
+        {
+            const grid = grid_make(2, 2);
+            grid[0][0].is_mine = true;
+            grid[0][0].state = kCellStateFlagged;
+            // Expect mine is never moved.
+            for (let i = 0; i < 10; i++) {
+                console.assert(grid_move_mines(grid));
+                console.assert(grid[0][0].is_mine);
+                let mine_count = count_mines(grid);
+                console.assert(mine_count == 1);
+            }
+        }
+
+        // Moving with an incorrect flag returns false.
+        {
+            const grid = grid_make(2, 2);
+            grid[0][0].state = kCellStateFlagged;
+            console.assert(!grid_move_mines(grid));
+        }
+    }
+
 
     function run_tests() {
         test_grid_make();
@@ -1827,9 +1883,10 @@
         test_grid_state();
         test_grid_set_mines();
         test_grid_to_json();
+        test_moving_mines();
     }
 
-    // run_tests();
+    run_tests();
 
     // Testing ... end
 </script>
