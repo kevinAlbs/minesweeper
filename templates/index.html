@@ -1430,7 +1430,38 @@
     // grid_move_mines moves hidden unflagged mines.
     // Returns false if a flag is incorrect.
     function grid_move_mines(grid) {
-        // TODO
+        const num_rows = grid.length;
+        const num_cols = grid[0].length;
+
+        // Count number of remaining hidden mines, and store unopened positions.
+        let remaining_mines = 0;
+        let positions = [];
+        {
+            for (let i = 0; i < num_rows; i++) {
+                for (let j = 0; j < num_cols; j++) {
+                    // Clear unopened unflagged mine:
+                    if (grid[i][j].is_mine && grid[i][j].state == kCellStateUnopened) {
+                        remaining_mines += 1;
+                        grid[i][j].is_mine = false;
+                    }
+
+                    // Return false on flagged non-mine:
+                    if (!grid[i][j].is_mine && grid[i][j].state == kCellStateFlagged) {
+                        return false;
+                    }
+
+                    if (grid[i][j].state == kCellStateUnopened) {
+                        positions.push({i: i, j: j});
+                    }
+                }
+            }
+        }
+
+        shuffle(positions);
+        for (let m = 0; m < remaining_mines; m++) {
+            grid[positions[m].i][positions[m].j].is_mine = true;
+        }
+
         return true;
     }
 
