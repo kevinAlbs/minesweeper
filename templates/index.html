@@ -111,7 +111,7 @@
                 <br />
             </div>
             <h1>Moving Mines</h1>
-            <p>Each second, hidden unflagged mines may move. Disables best times.</p>
+            <p>Every five seconds, hidden unflagged mines may move. Disables best times.</p>
             <div class="options">
                 <input type="radio" name="moving_mines" value="no" id="moving_mines_no"><label
                     for="moving_mines_no">No</label><br />
@@ -543,7 +543,7 @@
         // `win_callback` is called exactly once when `won` transitions from `false` to `true`.
         let win_callback = null;
         let used_moving_mines = false;
-        let moving_mines_last_second = 0; // At which second in the gameplay was the last time mines moved?
+        let moving_mines_last_applied = 0; // At which five-second interval in the gameplay was the last time mines moved?
 
         obj.get_difficulty = function () {
             return difficulty;
@@ -687,7 +687,7 @@
             }
 
             used_moving_mines = false;
-            moving_mines_last_second = 0;
+            moving_mines_last_applied = 0;
         }
 
         obj.start = function (opts) {
@@ -861,13 +861,13 @@
 
             // Maybe move mines
             if (config.moving_mines === "yes") {
+                let secs_div_5 = Math.floor(obj.get_seconds(true) / 5);
                 if (!used_moving_mines) {
                     used_moving_mines = true; // Disables best score.
-                    moving_mines_last_second = obj.get_seconds(true);
+                    moving_mines_last_applied = secs_div_5;
                 }
-                let seconds = obj.get_seconds(true);
-                if (moving_mines_last_second < seconds) {
-                    moving_mines_last_second = seconds;
+                if (moving_mines_last_applied < secs_div_5) {
+                    moving_mines_last_applied = secs_div_5;
                     let res = grid_move_mines(grid);
                     if (!res.ok) {
                         losing_mines = res.losing_mines;
