@@ -1428,15 +1428,27 @@
     }
 
     // grid_move_mines moves hidden unflagged mines.
-    // Returns false if a flag is incorrect.
+    // Returns { ok: false, losing_mines: [...] } if a flag is incorrect.
     function grid_move_mines(grid) {
         const num_rows = grid.length;
         const num_cols = grid[0].length;
 
+        // Return false on flagged non-mine:
+        for (let i = 0; i < num_rows; i++) {
+            for (let j = 0; j < num_cols; j++) {
+
+
+                if (!grid[i][j].is_mine && grid[i][j].state == kCellStateFlagged) {
+                    return { ok: false, losing_mines: [ grid[i][j] ]};
+                }
+
+            }
+        }
+        
+
         // Count number of remaining hidden mines, and store unopened positions.
         let remaining_mines = 0;
         let positions = [];
-        {
             for (let i = 0; i < num_rows; i++) {
                 for (let j = 0; j < num_cols; j++) {
                     // Clear unopened unflagged mine:
@@ -1447,22 +1459,22 @@
 
                     // Return false on flagged non-mine:
                     if (!grid[i][j].is_mine && grid[i][j].state == kCellStateFlagged) {
-                        return false;
+                    return { ok: false, losing_mines: [ grid[i][j] ]};
                     }
 
                     if (grid[i][j].state == kCellStateUnopened) {
                         positions.push({i: i, j: j});
-                    }
                 }
             }
         }
+        
 
         shuffle(positions);
         for (let m = 0; m < remaining_mines; m++) {
             grid[positions[m].i][positions[m].j].is_mine = true;
         }
 
-        return true;
+        return {ok: true};
     }
 
     // grid_to_json returns a JSON friendly grid
@@ -1874,7 +1886,7 @@
             // Expect mine is eventually moved.
             let changed = false;
             for (let i = 0; i < 10; i++) {
-                console.assert(grid_move_mines(grid));
+                console.assert(grid_move_mines(grid).ok);
                 if (!grid[0][0].is_mine) {
                     changed = true;
                 }
@@ -1891,7 +1903,7 @@
             grid[0][0].state = kCellStateFlagged;
             // Expect mine is never moved.
             for (let i = 0; i < 10; i++) {
-                console.assert(grid_move_mines(grid));
+                console.assert(grid_move_mines(grid).ok);
                 console.assert(grid[0][0].is_mine);
                 let mine_count = count_mines(grid);
                 console.assert(mine_count == 1);
@@ -1901,8 +1913,11 @@
         // Moving with an incorrect flag returns false.
         {
             const grid = grid_make(2, 2);
-            grid[0][0].state = kCellStateFlagged;
-            console.assert(!grid_move_mines(grid));
+            grid[0][0].is_mine = true;
+            grid[0][1].state = kCellStateFlagged;
+            console.assert(!grid_move_mines(grid).ok);
+            let mine_count = count_mines(grid);
+            console.assert(mine_count == 1);
         }
     }
 
