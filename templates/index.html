@@ -110,6 +110,14 @@
                 mines.
                 <br />
             </div>
+            <h1>Moving Mines</h1>
+            <p>Each second, hidden unflagged mines may move.</p>
+            <div class="options">
+                <input type="radio" name="moving_mines" value="no" id="moving_mines_no"><label
+                    for="moving_mines_no">No</label><br />
+                <input type="radio" name="moving_mines" value="yes" id="moving_mines_yes"><label for="moving_mines_yes">Yes</label>
+            </div>
+
         </div>
         <p><a href="#" id="best_times_open">Open Personal Best Times</a></p>
         <div id="best_times">
@@ -141,7 +149,8 @@
             columns: 30,
             mines: 99,
         },
-        darkmode: "no"
+        darkmode: "no",
+        moving_mines: "no"
     };
     // If local storage has saved config, apply it.
     config.secondary_chording = localStorage.getItem("secondary_chording") || config.secondary_chording;
@@ -150,6 +159,7 @@
     config.difficulty_custom.rows = parseInt(localStorage.getItem("difficulty_custom_rows")) || config.difficulty_custom.rows;
     config.difficulty_custom.columns = parseInt(localStorage.getItem("difficulty_custom_columns")) || config.difficulty_custom.columns;
     config.difficulty_custom.mines = parseInt(localStorage.getItem("difficulty_custom_mines")) || config.difficulty_custom.mines;
+    config.moving_mines = localStorage.getItem("moving_mines") || config.moving_mines;
     // apply initial setting of darkmode.
     function apply_darkmode() {
         if (config.darkmode === "yes") {
@@ -419,6 +429,15 @@
                 el.checked = true;
             }
         });
+        document.querySelectorAll("[name=moving_mines]").forEach((el) => {
+            el.addEventListener("change", (e) => {
+                config.moving_mines = e.target.value;
+                localStorage.setItem("moving_mines", config.moving_mines);
+            });
+            if (el.value == config.moving_mines) {
+                el.checked = true;
+            }
+        });
         document.querySelector("#config_open").addEventListener("click", function (e) {
             e.preventDefault();
             document.querySelector("#config").style.display = "block";
@@ -523,6 +542,8 @@
         let flags_placed;
         // `win_callback` is called exactly once when `won` transitions from `false` to `true`.
         let win_callback = null;
+        let used_moving_mines = false;
+        let moving_mines_last_second = 0; // At which second in the gameplay was the last time mines moved?
 
         obj.get_difficulty = function () {
             return difficulty;
@@ -558,6 +579,10 @@
 
         obj.get_grid_json = function () {
             return grid_to_json(grid);
+        }
+
+        obj.used_moving_mines = function () {
+            return used_moving_mines;
         }
 
         // opts may contain 'difficulty' to determine board size.
@@ -660,6 +685,9 @@
                 // Assume test grid already has mines placed.
                 mines_placed = true;
             }
+
+            used_moving_mines = false;
+            moving_mines_last_second = 0;
         }
 
         obj.start = function (opts) {
@@ -831,6 +859,23 @@
             mouse.primaryPressed = false;
             mouse.secondaryPressed = false;
 
+            // Maybe move mines
+            if (config.moving_mines === "yes") {
+                if (!used_moving_mines) {
+                    used_moving_mines = true; // Disables best score.
+                    moving_mines_last_second = obj.get_seconds(true);
+                }
+                let seconds = obj.get_seconds(true);
+                if (moving_mines_last_second < seconds) {
+                    moving_mines_last_second = seconds;
+                    let res = grid_move_mines(grid);
+                    if (!res.ok) {
+                        losing_mines = res.losing_mines;
+                        time_stopped = Date.now();
+                    }
+                }
+            }
+
             function in_cell_list(cell_list, cell) {
                 for (let i = 0; i < cell_list.length; i++) {
                     if (cell_list[i] == cell) {
@@ -951,7 +996,7 @@
             }
         }
 
-        obj.get_seconds = function () {
+        obj.get_seconds = function (nolimit) {
             let seconds = 0;
             if (time_started) {
                 let diff_ms;
@@ -962,7 +1007,7 @@
                 }
                 seconds = Math.floor(diff_ms / 1000);
             }
-            if (seconds > 999) {
+            if (seconds > 999 && !nolimit) {
                 seconds = 999;
             }
             return seconds;
@@ -1345,6 +1390,10 @@
             game = game_make(gMouse);
             game.start({
                 win_callback: function () {
+                    if (game.used_moving_mines()) {
+                        // Best times do not apply for moving mines.
+                        return;
+                    }
                     best_times.try_saving_new_time(game.get_difficulty(), game.get_seconds());
                 }
             });
