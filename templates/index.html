@@ -142,7 +142,7 @@
         </div>
         <p><a id="open_leaderboard" href="{{ url_for('get') }}" target="_blank">Open Leaderboard.</a></p>
         <small>View the source on <a href="https://github.com/kevinAlbs/minesweeper" target="_blank">Github</a></small>
-        <p id="last-updated">Last updated: 2026-01-11 (Added moving mines setting)</p>
+        <p id="last-updated">Last updated: 2026-06-27 (Added zoom)</p>
     </div>
 </body>
 <script src="https://www.google.com/recaptcha/api.js?render=6LdjrxgpAAAAAE9axubUvn-HcW7oInLysspkriUZ"></script>
@@ -502,8 +502,8 @@
     // Set up mouse events.
     {
         document.addEventListener("mousemove", function (e) {
-            gMouse.offsetX = e.pageX - gMouse.origin_el.getBoundingClientRect().x;
-            gMouse.offsetY = e.pageY - gMouse.origin_el.getBoundingClientRect().y;
+            gMouse.offsetX = e.pageX - (gMouse.origin_el.getBoundingClientRect().x + window.scrollX);
+            gMouse.offsetY = e.pageY - (gMouse.origin_el.getBoundingClientRect().y + window.scrollY);
             gMouse.buttons = e.buttons;
         });
 
