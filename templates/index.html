@@ -612,7 +612,6 @@
                 grid[2][2].is_mine = true;
                 mine_count = 3;
                 mines_placed = true;
-                cnv.style.backgroundImage = "url({{ url_for('static', filename='img/minesweeper-expert.png') }})";
                 cnv.setAttribute("width", "504");
                 cnv.setAttribute("height", "323");
                 smiley.x = 240;
@@ -641,7 +640,6 @@
                 grid = grid_make(16, 30);
                 mine_count = 99;
                 mines_placed = false;
-                cnv.style.backgroundImage = "url({{ url_for('static', filename='img/minesweeper-expert.png') }})";
                 cnv.setAttribute("width", "504");
                 cnv.setAttribute("height", "323");
                 smiley.x = 240;
@@ -650,7 +648,6 @@
                 grid = grid_make(16, 16);
                 mine_count = 40;
                 mines_placed = false;
-                cnv.style.backgroundImage = "url({{ url_for('static', filename='img/minesweeper-intermediate.png') }})";
                 cnv.setAttribute("width", "280");
                 cnv.setAttribute("height", "323");
                 smiley.x = 128;
@@ -659,7 +656,6 @@
                 grid = grid_make(8, 8);
                 mine_count = 10;
                 mines_placed = false;
-                cnv.style.backgroundImage = "url({{ url_for('static', filename='img/minesweeper-beginner.png') }})";
                 cnv.setAttribute("width", "152");
                 cnv.setAttribute("height", "195");
                 smiley.x = 64;
@@ -883,6 +879,24 @@
                     }
                 }
                 return false;
+            }
+
+
+            // Render background.
+            {
+                let sprite = null;
+                if (config.difficulty == "Expert" || config.difficulty == "Test") {
+                    sprite = sprite_map["bg_expert"];
+                }
+                else if (config.difficulty == "Intermediate") {
+                    sprite = sprite_map["bg_intermediate"];
+                }
+                else if (config.difficulty == "Beginner") {
+                    sprite = sprite_map["bg_beginner"];
+                }
+                if (sprite !== null) {
+                    ctx.drawImage(sprite.image, sprite.offset_x, sprite.offset_y, sprite.width, sprite.height, 0, 0, sprite.width, sprite.height);
+                }
             }
 
             // Render grid.
@@ -1377,6 +1391,10 @@
             for (let i = 0; i < 12; i++) {
                 sprite_map[sprite_names[sprite_names_i++]] = createSprite(image, 14 * i, 0, 13, 23);
             }
+            // Cut backgrounds
+            sprite_map["bg_expert"] = createSprite(image, 0, 82, 504, 404);
+            sprite_map["bg_intermediate"] = createSprite(image, 0, 405, 280, 727);
+            sprite_map["bg_beginner"] = createSprite(image, 280, 405, 431, 599);
 
             try {
                 test_game();
