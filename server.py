@@ -98,6 +98,10 @@ def _get_datastore(useTestLeaderboard=False) -> DataStore:
 def home():
     return render_template("index.html")
 
+@app.route("/big")
+def big():
+    return render_template("big.html")
+
 @app.route("/submit", methods=["post"])
 def submit():
 
