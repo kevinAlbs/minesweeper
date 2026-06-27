@@ -118,6 +118,12 @@
                 <input type="radio" name="moving_mines" value="yes" id="moving_mines_yes"><label for="moving_mines_yes">Yes</label>
             </div>
 
+            <h1>Zoom</h1>
+            <div class="options">
+                <input type="radio" name="zoom" value="1" id="zoom_1x"><label for="zoom_1x">1x</label><br />
+                <input type="radio" name="zoom" value="2" id="zoom_2x"><label for="zoom_2x">2x</label>
+            </div>
+
         </div>
         <p><a href="#" id="best_times_open">Open Personal Best Times</a></p>
         <div id="best_times">
@@ -150,7 +156,8 @@
             mines: 99,
         },
         darkmode: "no",
-        moving_mines: "no"
+        moving_mines: "no",
+        zoom: 1
     };
     // If local storage has saved config, apply it.
     config.secondary_chording = localStorage.getItem("secondary_chording") || config.secondary_chording;
@@ -160,6 +167,7 @@
     config.difficulty_custom.columns = parseInt(localStorage.getItem("difficulty_custom_columns")) || config.difficulty_custom.columns;
     config.difficulty_custom.mines = parseInt(localStorage.getItem("difficulty_custom_mines")) || config.difficulty_custom.mines;
     config.moving_mines = localStorage.getItem("moving_mines") || config.moving_mines;
+    config.zoom = localStorage.getItem("zoom") || config.zoom;
     // apply initial setting of darkmode.
     function apply_darkmode() {
         if (config.darkmode === "yes") {
@@ -438,6 +446,18 @@
                 el.checked = true;
             }
         });
+        document.querySelectorAll("[name=zoom]").forEach((el) => {
+            el.addEventListener("change", (e) => {
+                config.zoom = parseInt(e.target.value);
+                localStorage.setItem("zoom", config.zoom);
+                if (game) {
+                    game.updateZoom();
+                }
+            });
+            if (parseInt(el.value) == config.zoom) {
+                el.checked = true;
+            }
+        });
         document.querySelector("#config_open").addEventListener("click", function (e) {
             e.preventDefault();
             document.querySelector("#config").style.display = "block";
@@ -515,7 +535,7 @@
     const game_make = function (mouse) {
         const obj = {};
         const cnv = document.querySelector("canvas");
-        const ctx = cnv.getContext("2d");
+        let ctx = cnv.getContext("2d");
         const grid_top = 55;
         const grid_left = 12;
         let grid;
@@ -544,6 +564,7 @@
         let win_callback = null;
         let used_moving_mines = false;
         let moving_mines_last_applied = 0; // At which five-second interval in the gameplay was the last time mines moved?
+        let zoom = 1;
 
         obj.get_difficulty = function () {
             return difficulty;
@@ -585,10 +606,55 @@
             return used_moving_mines;
         }
 
+        // obj.updateZoom is called on reset (game start) or on a zoom setting change.
+        obj.updateZoom = function() {
+            zoom = config.zoom;
+
+            let container_width = 504; // Default.
+            let board_width = 0, board_height = 0;
+            if (difficulty == "Test") {
+                board_width = 504;
+                board_height = 323;
+            }
+            else if (difficulty == "Custom") {
+                const num_rows = config.difficulty_custom.rows;
+                const num_cols = config.difficulty_custom.columns;
+
+                // Each cell has width/height of 16.
+                board_width = 16 * num_cols + 24;
+                board_height = 16 * num_rows + 67;
+            }
+            else if (difficulty == "Expert") {
+                board_width = 504;
+                board_height = 323;
+            }
+            else if (difficulty == "Intermediate") {
+                board_width = 280;
+                board_height = 323;
+            }
+            else if (difficulty == "Beginner") {
+                board_width = 152;
+                board_height = 195;
+            }
+            else {
+                console.error("Unexpected difficulty: " + difficulty);
+            }
+
+            if (board_width > container_width) {
+                container_width = board_width;
+            }
+
+            cnv.setAttribute("width", applyZoom(board_width) + "px");
+            cnv.setAttribute("height", applyZoom(board_height) + "px");
+            document.querySelector("#container").style.width = applyZoom(container_width) + "px";
+            ctx = cnv.getContext("2d"); // Recreate context.
+        }
+
         // opts may contain 'difficulty' to determine board size.
         // opts may contain 'grid' to override the grid.
         function reset(opts) {
             difficulty = config.difficulty;
+            zoom = config.zoom;
 
             if (opts && "win_callback" in opts) {
                 win_callback = opts.win_callback;
@@ -602,8 +668,6 @@
                 difficulty = "Test";
             }
 
-            let container_width = 504; // Default.
-
             if (difficulty == "Test") {
                 // Test with 3 mines placed deterministically on a 4x3 board.
                 grid = grid_make(4, 3);
@@ -612,8 +676,6 @@
                 grid[2][2].is_mine = true;
                 mine_count = 3;
                 mines_placed = true;
-                cnv.setAttribute("width", "504");
-                cnv.setAttribute("height", "323");
                 smiley.x = 240;
                 clock_x = 446;
             }
@@ -625,46 +687,34 @@
                 grid = grid_make(num_rows, num_cols);
                 mine_count = num_mines;
                 mines_placed = false;
-                cnv.style.backgroundImage = "None";
-                // Each cell has width/height of 16.
-                const board_width = (16 * num_cols + 24);
-                cnv.setAttribute("width", board_width + "px");
-                cnv.setAttribute("height", (16 * num_rows + 67) + "px");
+                const board_width = 16 * num_cols + 24;
+                const board_height = 16 * num_rows + 67;
                 smiley.x = (board_width / 2) - 12;
                 clock_x = (board_width - 58);
-                if (board_width > 504) {
-                    container_width = board_width;
-                }
             }
             else if (difficulty == "Expert") {
                 grid = grid_make(16, 30);
                 mine_count = 99;
                 mines_placed = false;
-                cnv.setAttribute("width", "504");
-                cnv.setAttribute("height", "323");
                 smiley.x = 240;
                 clock_x = 446;
             } else if (difficulty == "Intermediate") {
                 grid = grid_make(16, 16);
                 mine_count = 40;
                 mines_placed = false;
-                cnv.setAttribute("width", "280");
-                cnv.setAttribute("height", "323");
                 smiley.x = 128;
                 clock_x = 222;
             } else if (difficulty == "Beginner") {
                 grid = grid_make(8, 8);
                 mine_count = 10;
                 mines_placed = false;
-                cnv.setAttribute("width", "152");
-                cnv.setAttribute("height", "195");
                 smiley.x = 64;
                 clock_x = 93;
             } else {
                 console.error("Unexpected difficulty: " + difficulty);
             }
 
-            document.querySelector("#container").style.width = container_width + "px";
+            obj.updateZoom();
             mouseState = kMouseStateNone;
             losing_mines = [];
             won = false;
@@ -695,12 +745,17 @@
             reset(opts);
         }
 
+        // Apply scaling. Mouse coordinates are relative to the canvas element, so must not be scaled.
+        function applyZoom(coord) {
+            return zoom * coord;
+        }
+
         // get_cell_coords returns the coordinates of a cell from a mouse position
         obj.get_cell_coords = function (mouse_x, mouse_y) {
-            mouse_y -= grid_top;
-            mouse_x -= grid_left;
-            const i = Math.floor(mouse_y / kCellSize);
-            const j = Math.floor(mouse_x / kCellSize);
+            mouse_y -= applyZoom(grid_top);
+            mouse_x -= applyZoom(grid_left);
+            const i = Math.floor(mouse_y / applyZoom(kCellSize));
+            const j = Math.floor(mouse_x / applyZoom(kCellSize));
             if (i < 0 || i >= grid.length) {
                 return null;
             }
@@ -711,8 +766,8 @@
         }
 
         function is_over_smiley() {
-            if (mouse.offsetX >= smiley.x && mouse.offsetX <= smiley.x + smiley.width) {
-                if (mouse.offsetY >= smiley.y && mouse.offsetY <= smiley.y + smiley.height) {
+            if (mouse.offsetX >= applyZoom(smiley.x) && mouse.offsetX <= applyZoom(smiley.x) + applyZoom(smiley.width)) {
+                if (mouse.offsetY >= applyZoom(smiley.y) && mouse.offsetY <= applyZoom(smiley.y) + applyZoom(smiley.height)) {
                     return true;
                 }
             }
@@ -881,6 +936,10 @@
                 return false;
             }
 
+            if (true) {
+                ctx.scale(zoom, zoom);
+            }
+
 
             // Render background.
             {
@@ -1008,6 +1067,8 @@
                     ctx.drawImage(sprite.image, sprite.offset_x, sprite.offset_y, sprite.width, sprite.height, clock_x + i * 13, 16, sprite.width, sprite.height);
                 }
             }
+
+            ctx.resetTransform();
         }
 
         obj.get_seconds = function (nolimit) {
@@ -1037,6 +1098,9 @@
 
     // Test game.
     {
+        function applyZoom(x) {
+            return config.zoom * x;
+        }
         function test_fixture_make() {
             let t = {};
 
@@ -1057,8 +1121,8 @@
             t.grid[2][2].is_mine = true;
 
             t.mouse_move = function (i, j) {
-                t.mouse.offsetX = kGridLeft + (j * kCellSize);
-                t.mouse.offsetY = kGridTop + (i * kCellSize);
+                t.mouse.offsetX = applyZoom(kGridLeft) + (j * applyZoom(kCellSize));
+                t.mouse.offsetY = applyZoom(kGridTop) + (i * applyZoom(kCellSize));
             }
 
             t.mouse_pressSecondary = function () {
@@ -1334,13 +1398,13 @@
                 if ((a === null) != (b === null)) return false;
                 return a.i == b.i && a.j == b.j;
             }
-            console.assert(eq(g.get_cell_coords(grid_left + 0, grid_top + 0), { i: 0, j: 0 }));
-            console.assert(eq(g.get_cell_coords(grid_left + 0, grid_top + 15), { i: 0, j: 0 }));
-            console.assert(eq(g.get_cell_coords(grid_left + 0, grid_top + 16), { i: 1, j: 0 }));
-            console.assert(eq(g.get_cell_coords(grid_left + 15, grid_top + 0), { i: 0, j: 0 }));
-            console.assert(eq(g.get_cell_coords(grid_left + 16, grid_top + 0), { i: 0, j: 1 }));
-            console.assert(eq(g.get_cell_coords(grid_left + 16, grid_top + 0), { i: 0, j: 1 }));
-            console.assert(eq(g.get_cell_coords(grid_left + 48, grid_top + 0), null));
+            console.assert(eq(g.get_cell_coords(applyZoom(grid_left) + applyZoom(0), applyZoom(grid_top) + applyZoom(0)), { i: 0, j: 0 }));
+            console.assert(eq(g.get_cell_coords(applyZoom(grid_left) + applyZoom(0), applyZoom(grid_top) + applyZoom(15)), { i: 0, j: 0 }));
+            console.assert(eq(g.get_cell_coords(applyZoom(grid_left) + applyZoom(0), applyZoom(grid_top) + applyZoom(16)), { i: 1, j: 0 }));
+            console.assert(eq(g.get_cell_coords(applyZoom(grid_left) + applyZoom(15), applyZoom(grid_top) + applyZoom(0)), { i: 0, j: 0 }));
+            console.assert(eq(g.get_cell_coords(applyZoom(grid_left) + applyZoom(16), applyZoom(grid_top) + applyZoom(0)), { i: 0, j: 1 }));
+            console.assert(eq(g.get_cell_coords(applyZoom(grid_left) + applyZoom(16), applyZoom(grid_top) + applyZoom(0)), { i: 0, j: 1 }));
+            console.assert(eq(g.get_cell_coords(applyZoom(grid_left) + applyZoom(48), applyZoom(grid_top) + applyZoom(0)), null));
         }
 
         function test_game() {
